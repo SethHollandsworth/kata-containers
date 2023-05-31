@@ -1,6 +1,11 @@
 use generic_array::{typenum::Unsigned, GenericArray};
 use sha2::{digest::OutputSizeUser, Digest};
-use std::{fs::File, io, io::Seek, os::unix::fs::FileExt};
+// import windows version if that is the current platform
+#[cfg(target_family = "unix")]
+use std::os::unix::fs::FileExt;
+#[cfg(target_family = "windows")]
+use std::os::windows::fs::FileExt;
+use std::{fs::File, io, io::Seek};
 use zerocopy::byteorder::{LE, U32, U64};
 use zerocopy::AsBytes;
 
@@ -125,7 +130,10 @@ impl<'a, T: Digest + Clone> Verity<'a, T> {
     fn uplevel(&mut self, l: usize) -> io::Result<bool> {
         self.finalize_level(l);
         if let Some(w) = self.writer {
+            #[cfg(target_family = "unix")]
             w.write_all_at(&self.levels[l].data, self.levels[l].file_offset)?;
+            #[cfg(target_family = "windows")]
+            w.seek_write(&self.levels[l].data, self.levels[l].file_offset)?;
         }
         self.levels[l].file_offset += self.hash_block_size as u64;
         let h = self.digest(&self.levels[l].data);
@@ -175,18 +183,30 @@ impl<'a, T: Digest + Clone> Verity<'a, T> {
 
         self.finalize_level(0);
         if let Some(w) = self.writer {
+            #[cfg(target_family = "unix")]
             w.write_all_at(&self.levels[0].data, self.levels[0].file_offset)?;
+            #[cfg(target_family = "windows")]
+            w.seek_write(&self.levels[0].data, self.levels[0].file_offset)?;
+
             self.levels[0].file_offset += self.hash_block_size as u64;
 
             if write_superblock {
-                w.write_all_at(
-                    self.super_block.as_bytes(),
-                    self.levels[len - 1].file_offset + 4096 - 512,
-                )?;
-
                 // TODO: Align to the hash_block_size...
                 // Align to 4096 bytes.
-                w.write_all_at(&[0u8], self.levels[len - 1].file_offset + 4095)?;
+                #[cfg(target_family = "unix")] {
+                    w.write_all_at(
+                        self.super_block.as_bytes(),
+                        self.levels[len - 1].file_offset + 4096 - 512,
+                    )?;
+                    w.write_all_at(&[0u8], self.levels[len - 1].file_offset + 4095)?;
+                }
+                #[cfg(target_family = "windows")] {
+                    w.seek_write(
+                        self.super_block.as_bytes(),
+                        self.levels[len - 1].file_offset + 4096 - 512,
+                    )?;
+                    w.seek_write(&[0u8], self.levels[len - 1].file_offset + 4095)?;
+                }
             }
         }
 
@@ -203,7 +223,10 @@ pub fn traverse_file<T: Digest + Clone>(
     let mut buf = Vec::new();
     buf.resize(verity.data_block_size, 0);
     while verity.more_blocks() {
+        #[cfg(target_family = "unix")]
         reader.read_exact_at(&mut buf, read_offset)?;
+        #[cfg(target_family = "windows")]
+        reader.seek_read(&mut buf, read_offset)?;
         verity.add_block(&buf)?;
         read_offset += verity.data_block_size as u64;
     }
