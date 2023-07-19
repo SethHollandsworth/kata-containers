@@ -55,7 +55,7 @@ pub struct ImageLayer {
 }
 
 impl Container {
-    pub async fn new(use_cached_files: bool, image: &str) -> Result<Self> {
+    pub async fn new(use_cached_files: bool, no_cache: bool, image: &str) -> Result<Self> {
         info!("============================================");
         info!("Pulling manifest and config for {:?}", image);
         let reference: Reference = image.to_string().parse().unwrap();
@@ -85,6 +85,7 @@ impl Container {
                     serde_json::from_str(&config_layer_str).unwrap();
                 let image_layers = get_image_layers(
                     use_cached_files,
+                    no_cache,
                     &mut client,
                     &reference,
                     &manifest,
@@ -211,6 +212,7 @@ impl Container {
 
 async fn get_image_layers(
     use_cached_files: bool,
+    no_cache: bool,
     client: &mut Client,
     reference: &Reference,
     manifest: &manifest::OciImageManifest,
@@ -235,6 +237,10 @@ async fn get_image_layers(
                     )
                     .await?,
                 });
+                // delete image layers cache if no_cache, the folder will get recreated for each layer
+                if no_cache{
+                    fs::remove_dir_all(Path::new("layers_cache")).await?;
+                }
             } else {
                 return Err(anyhow!("Too many Docker gzip layers"));
             }
@@ -397,8 +403,8 @@ fn do_create_verity_hash_file(path: &Path, verity_path: &Path) -> Result<()> {
     Ok(())
 }
 
-pub async fn get_container(use_cache: bool, image: &str) -> Result<Container> {
-    Container::new(use_cache, image).await
+pub async fn get_container(use_cache: bool, no_cache: bool, image: &str) -> Result<Container> {
+    Container::new(use_cache, no_cache, image).await
 }
 
 fn build_auth(reference: &Reference) -> RegistryAuth {

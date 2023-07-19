@@ -23,6 +23,7 @@ impl yaml::K8sResource for NoPolicyResource {
     async fn init(
         &mut self,
         _use_cache: bool,
+        _no_cache: bool,
         _doc_mapping: &serde_yaml::Value,
         _silent_unsupported_fields: bool,
     ) {

@@ -8,6 +8,7 @@ use log::debug;
 #[derive(Clone, Debug)]
 pub struct Config {
     pub use_cache: bool,
+    pub no_cache: bool,
 
     pub yaml_file: Option<String>,
     pub rules_file: String,
@@ -28,6 +29,7 @@ impl Config {
         silent_unsupported_fields: bool,
         raw_out: bool,
         base64_out: bool,
+        no_cache: bool,
     ) -> Self {
         let mut input_path = ".".to_string();
         if let Some(path) = input_files_path {
@@ -54,6 +56,7 @@ impl Config {
             silent_unsupported_fields,
             raw_out,
             base64_out,
+            no_cache,
         }
     }
 }

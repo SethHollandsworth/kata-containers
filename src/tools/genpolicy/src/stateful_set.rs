@@ -55,10 +55,11 @@ impl yaml::K8sResource for StatefulSet {
     async fn init(
         &mut self,
         use_cache: bool,
+        no_cache: bool,
         doc_mapping: &serde_yaml::Value,
         _silent_unsupported_fields: bool,
     ) {
-        yaml::k8s_resource_init(&mut self.spec.template.spec, use_cache).await;
+        yaml::k8s_resource_init(&mut self.spec.template.spec, use_cache, no_cache).await;
         self.doc_mapping = doc_mapping.clone();
     }
 

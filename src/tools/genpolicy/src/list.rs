@@ -40,6 +40,7 @@ impl yaml::K8sResource for List {
     async fn init(
         &mut self,
         use_cache: bool,
+        no_cache: bool,
         _doc_mapping: &serde_yaml::Value,
         silent_unsupported_fields: bool,
     ) {
@@ -48,7 +49,7 @@ impl yaml::K8sResource for List {
             let (mut resource, _kind) =
                 yaml::new_k8s_resource(&yaml_string, silent_unsupported_fields).unwrap();
             resource
-                .init(use_cache, item, silent_unsupported_fields)
+                .init(use_cache, no_cache, item, silent_unsupported_fields)
                 .await;
             self.resources.push(resource);
         }

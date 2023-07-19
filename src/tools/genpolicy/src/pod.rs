@@ -420,8 +420,8 @@ pub struct LocalObjectReference {
 }
 
 impl Container {
-    pub async fn init(&mut self, use_cache: bool) {
-        self.registry = registry::get_container(use_cache, &self.image)
+    pub async fn init(&mut self, use_cache: bool, no_cache: bool) {
+        self.registry = registry::get_container(use_cache, no_cache, &self.image)
             .await
             .unwrap();
     }
@@ -621,10 +621,11 @@ impl yaml::K8sResource for Pod {
     async fn init(
         &mut self,
         use_cache: bool,
+        no_cache: bool,
         doc_mapping: &serde_yaml::Value,
         _silent_unsupported_fields: bool,
     ) {
-        yaml::k8s_resource_init(&mut self.spec, use_cache).await;
+        yaml::k8s_resource_init(&mut self.spec, use_cache, no_cache).await;
         self.doc_mapping = doc_mapping.clone();
     }
 

@@ -80,6 +80,7 @@ impl yaml::K8sResource for ConfigMap {
     async fn init(
         &mut self,
         _use_cache: bool,
+        _no_cache: bool,
         doc_mapping: &serde_yaml::Value,
         _silent_unsupported_fields: bool,
     ) {

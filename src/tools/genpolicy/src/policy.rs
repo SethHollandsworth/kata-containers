@@ -160,6 +160,7 @@ impl AgentPolicy {
             resource
                 .init(
                     config.use_cache,
+                    config.no_cache,
                     &doc_mapping,
                     config.silent_unsupported_fields,
                 )

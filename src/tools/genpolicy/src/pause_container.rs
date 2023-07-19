@@ -11,7 +11,7 @@ use crate::pod;
 use log::debug;
 
 /// Adds a K8s pause container to a vector.
-pub async fn add_pause_container(containers: &mut Vec<pod::Container>, use_cache: bool) {
+pub async fn add_pause_container(containers: &mut Vec<pod::Container>, use_cache: bool, no_cache: bool) {
     debug!("Adding pause container...");
     let mut pause_container = pod::Container {
         // TODO: load this path from data.json.
@@ -28,7 +28,7 @@ pub async fn add_pause_container(containers: &mut Vec<pod::Container>, use_cache
         }),
         ..Default::default()
     };
-    pause_container.init(use_cache).await;
+    pause_container.init(use_cache, no_cache).await;
     containers.insert(0, pause_container);
     debug!("pause container added.");
 }

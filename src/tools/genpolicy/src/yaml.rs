@@ -41,6 +41,7 @@ pub trait K8sResource {
     async fn init(
         &mut self,
         use_cache: bool,
+        no_cache: bool,
         doc_mapping: &serde_yaml::Value,
         silent_unsupported_fields: bool,
     );
@@ -210,17 +211,17 @@ pub fn get_yaml_header(yaml: &str) -> anyhow::Result<YamlHeader> {
     return Ok(serde_yaml::from_str(yaml)?);
 }
 
-pub async fn k8s_resource_init(spec: &mut pod::PodSpec, use_cache: bool) {
+pub async fn k8s_resource_init(spec: &mut pod::PodSpec, use_cache: bool, no_cache: bool) {
     for container in &mut spec.containers {
-        container.init(use_cache).await;
+        container.init(use_cache, no_cache).await;
     }
 
-    pause_container::add_pause_container(&mut spec.containers, use_cache).await;
+    pause_container::add_pause_container(&mut spec.containers, use_cache, no_cache).await;
 
     if let Some(init_containers) = &spec.initContainers {
         for container in init_containers {
             let mut new_container = container.clone();
-            new_container.init(use_cache).await;
+            new_container.init(use_cache, no_cache).await;
             spec.containers.insert(1, new_container);
         }
     }
