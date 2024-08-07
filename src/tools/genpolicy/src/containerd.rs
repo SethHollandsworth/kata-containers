@@ -38,7 +38,8 @@ pub fn get_process(privileged_container: bool, common: &policy::CommonData) -> p
 }
 
 // Default mounts field from containerd.
-pub fn get_mounts(is_pause_container: bool, privileged_container: bool) -> Vec<policy::KataMount> {
+// pub fn get_mounts(is_pause_container: bool, privileged_container: bool) -> Vec<policy::KataMount> {
+pub fn get_mounts(privileged_container: bool) -> Vec<policy::KataMount> {
     let sysfs_read_write_option = if privileged_container { "rw" } else { "ro" };
 
     let mut mounts = vec![
@@ -111,20 +112,33 @@ pub fn get_mounts(is_pause_container: bool, privileged_container: bool) -> Vec<p
         },
     ];
 
-    if !is_pause_container {
-        mounts.push(policy::KataMount {
-            destination: "/sys/fs/cgroup".to_string(),
-            type_: "cgroup".to_string(),
-            source: "cgroup".to_string(),
-            options: vec![
-                "nosuid".to_string(),
-                "noexec".to_string(),
-                "nodev".to_string(),
-                "relatime".to_string(),
-                sysfs_read_write_option.to_string(),
-            ],
-        });
-    }
+    // if !is_pause_container {
+    //     mounts.push(policy::KataMount {
+    //         destination: "/sys/fs/cgroup".to_string(),
+    //         type_: "cgroup".to_string(),
+    //         source: "cgroup".to_string(),
+    //         options: vec![
+    //             "nosuid".to_string(),
+    //             "noexec".to_string(),
+    //             "nodev".to_string(),
+    //             "relatime".to_string(),
+    //             sysfs_read_write_option.to_string(),
+    //         ],
+    //     });
+    // }
+
+    mounts.push(policy::KataMount {
+        destination: "/sys/fs/cgroup".to_string(),
+        type_: "cgroup".to_string(),
+        source: "cgroup".to_string(),
+        options: vec![
+            "nosuid".to_string(),
+            "noexec".to_string(),
+            "nodev".to_string(),
+            "relatime".to_string(),
+            sysfs_read_write_option.to_string(),
+        ],
+    });
 
     mounts
 }

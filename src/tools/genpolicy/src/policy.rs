@@ -518,8 +518,10 @@ impl AgentPolicy {
         let yaml_containers = resource.get_containers();
         let mut policy_containers = Vec::new();
 
-        for (i, yaml_container) in yaml_containers.iter().enumerate() {
-            policy_containers.push(self.get_container_policy(resource, yaml_container, i == 0));
+        // for (i, yaml_container) in yaml_containers.iter().enumerate() {
+        for yaml_container in yaml_containers.iter() {
+            // policy_containers.push(self.get_container_policy(resource, yaml_container, i == 0));
+            policy_containers.push(self.get_container_policy(resource, yaml_container));
         }
 
         let policy_data = policy::PolicyData {
@@ -541,9 +543,9 @@ impl AgentPolicy {
         &self,
         resource: &dyn yaml::K8sResource,
         yaml_container: &pod::Container,
-        is_pause_container: bool,
+        // is_pause_container: bool,
     ) -> ContainerPolicy {
-        let c_settings = self.settings.get_container_settings(is_pause_container);
+        let c_settings = self.settings.get_container_settings();
         let mut root = c_settings.Root.clone();
         root.Readonly = yaml_container.read_only_root_filesystem();
 
@@ -557,28 +559,29 @@ impl AgentPolicy {
         let annotations = get_container_annotations(
             resource,
             yaml_container,
-            is_pause_container,
+            // is_pause_container,
             &namespace,
             c_settings,
-            use_host_network,
+            // use_host_network,
         );
 
         let is_privileged = yaml_container.is_privileged();
         let process = self.get_container_process(
             resource,
             yaml_container,
-            is_pause_container,
+            // is_pause_container,
             &namespace,
             c_settings,
             is_privileged,
         );
 
-        let mut mounts = containerd::get_mounts(is_pause_container, is_privileged);
+        // let mut mounts = containerd::get_mounts(is_pause_container, is_privileged);
+        let mut mounts = containerd::get_mounts(is_privileged);
         mount_and_storage::get_policy_mounts(
             &self.settings,
             &mut mounts,
             yaml_container,
-            is_pause_container,
+            // is_pause_container,
         );
 
         let image_layers = yaml_container.registry.get_image_layers();
@@ -593,7 +596,8 @@ impl AgentPolicy {
         );
 
         let mut linux = containerd::get_linux(is_privileged);
-        linux.Namespaces = get_kata_namespaces(is_pause_container, use_host_network);
+        // linux.Namespaces = get_kata_namespaces(is_pause_container, use_host_network);
+        linux.Namespaces = get_kata_namespaces(use_host_network);
 
         if !c_settings.Linux.MaskedPaths.is_empty() {
             linux.MaskedPaths = c_settings.Linux.MaskedPaths.clone();
@@ -602,11 +606,13 @@ impl AgentPolicy {
             linux.ReadonlyPaths = c_settings.Linux.ReadonlyPaths.clone();
         }
 
-        let sandbox_pidns = if is_pause_container {
-            false
-        } else {
-            resource.use_sandbox_pidns()
-        };
+        // let sandbox_pidns = if is_pause_container {
+        //     false
+        // } else {
+        //     resource.use_sandbox_pidns()
+        // };
+        let sandbox_pidns = resource.use_sandbox_pidns();
+
         let exec_commands = yaml_container.get_exec_commands();
 
         ContainerPolicy {
@@ -629,7 +635,7 @@ impl AgentPolicy {
         &self,
         resource: &dyn yaml::K8sResource,
         yaml_container: &pod::Container,
-        is_pause_container: bool,
+        // is_pause_container: bool,
         namespace: &str,
         c_settings: &KataSpec,
         is_privileged: bool,
@@ -647,14 +653,17 @@ impl AgentPolicy {
 
         if let Some(tty) = yaml_container.tty {
             process.Terminal = tty;
-            if tty && !is_pause_container {
+            // if tty && !is_pause_container {
+            if tty {
                 process.Env.push("TERM=xterm".to_string());
             }
         }
 
-        if !is_pause_container {
-            process.Env.push("HOSTNAME=$(host-name)".to_string());
-        }
+        // if !is_pause_container {
+        //     process.Env.push("HOSTNAME=$(host-name)".to_string());
+        // }
+
+        process.Env.push("HOSTNAME=$(host-name)".to_string());
 
         let service_account_name = if let Some(s) = &yaml_container.serviceAccountName {
             s
@@ -926,10 +935,10 @@ fn substitute_arg_env_variables(arg: &mut String, env: &Vec<String>) {
 fn get_container_annotations(
     resource: &dyn yaml::K8sResource,
     yaml_container: &pod::Container,
-    is_pause_container: bool,
+    // is_pause_container: bool,
     namespace: &str,
     c_settings: &KataSpec,
-    use_host_network: bool,
+    // use_host_network: bool,
 ) -> BTreeMap<String, String> {
     let mut annotations = if let Some(a) = resource.get_annotations() {
         let mut a_cloned = a.clone();
@@ -947,15 +956,23 @@ fn get_container_annotations(
             .or_insert(name);
     }
 
-    if !is_pause_container {
-        let mut image_name = yaml_container.image.clone();
-        if image_name.find(':').is_none() {
-            image_name += ":latest";
-        }
-        annotations
-            .entry("io.kubernetes.cri.image-name".to_string())
-            .or_insert(image_name);
+    // if !is_pause_container {
+    //     let mut image_name = yaml_container.image.clone();
+    //     if image_name.find(':').is_none() {
+    //         image_name += ":latest";
+    //     }
+    //     annotations
+    //         .entry("io.kubernetes.cri.image-name".to_string())
+    //         .or_insert(image_name);
+    // }
+
+    let mut image_name = yaml_container.image.clone();
+    if image_name.find(':').is_none() {
+        image_name += ":latest";
     }
+    annotations
+        .entry("io.kubernetes.cri.image-name".to_string())
+        .or_insert(image_name);
 
     annotations.insert(
         "io.kubernetes.cri.sandbox-namespace".to_string(),
@@ -968,16 +985,16 @@ fn get_container_annotations(
             .or_insert(yaml_container.name.clone());
     }
 
-    if is_pause_container {
-        let mut network_namespace = "^/var/run/netns/cni".to_string();
-        if use_host_network {
-            network_namespace += "test";
-        }
-        network_namespace += "-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
-        annotations
-            .entry("nerdctl/network-namespace".to_string())
-            .or_insert(network_namespace);
-    }
+    // if is_pause_container {
+    //     let mut network_namespace = "^/var/run/netns/cni".to_string();
+    //     if use_host_network {
+    //         network_namespace += "test";
+    //     }
+    //     network_namespace += "-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
+    //     annotations
+    //         .entry("nerdctl/network-namespace".to_string())
+    //         .or_insert(network_namespace);
+    // }
 
     annotations
 }
@@ -992,7 +1009,7 @@ fn add_missing_strings(src: &Vec<String>, dest: &mut Vec<String>) {
 }
 
 pub fn get_kata_namespaces(
-    is_pause_container: bool,
+    // is_pause_container: bool,
     use_host_network: bool,
 ) -> Vec<KataLinuxNamespace> {
     let mut namespaces: Vec<KataLinuxNamespace> = vec![KataLinuxNamespace {
@@ -1000,7 +1017,8 @@ pub fn get_kata_namespaces(
         Path: "".to_string(),
     }];
 
-    if !is_pause_container || !use_host_network {
+    // if !is_pause_container || !use_host_network {
+    if !use_host_network {
         namespaces.push(KataLinuxNamespace {
             Type: "uts".to_string(),
             Path: "".to_string(),

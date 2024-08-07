@@ -230,7 +230,7 @@ pub async fn k8s_resource_init(spec: &mut pod::PodSpec, config: &Config) {
         container.init(config).await;
     }
 
-    pod::add_pause_container(&mut spec.containers, config).await;
+    // pod::add_pause_container(&mut spec.containers, config).await;
 
     if let Some(init_containers) = &spec.initContainers {
         for container in init_containers {
