@@ -115,6 +115,12 @@ fn version_default() -> String {
     DEFAULT_OCI_VERSION.to_string()
 }
 
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct EnvVar {
+    pub key: String,
+    pub value: String,
+}
+
 /// OCI container Process struct. This struct is very similar to the Process
 /// struct generated from oci.proto. The main difference is that it preserves
 /// the upper case field names from oci.proto, for consistency with the structs
@@ -137,6 +143,9 @@ pub struct KataProcess {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub Env: Vec<String>,
 
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub envs: Vec<EnvVar>,  // New field for key-value pairs
+
     /// Cwd is the current working directory for the process and must be
     /// relative to the container's root.
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -149,6 +158,18 @@ pub struct KataProcess {
     /// NoNewPrivileges controls whether additional privileges could be gained by processes in the container.
     #[serde(default)]
     pub NoNewPrivileges: bool,
+}
+
+impl KataProcess {
+    fn convert_env_to_envs(&mut self) {
+        self.envs = self.Env.iter().map(|e| {
+            let parts: Vec<&str> = e.splitn(2, '=').collect();
+            EnvVar {
+                key: parts[0].to_string(),
+                value: parts.get(1).cloned().unwrap_or_default().to_string(),
+            }
+        }).collect();
+    }
 }
 
 /// OCI container User struct. This struct is very similar to the User
@@ -650,6 +671,8 @@ impl AgentPolicy {
             service_account_name,
         );
 
+        process.convert_env_to_envs();
+
         substitute_env_variables(&mut process.Env);
         substitute_args_env_variables(&mut process.Args, &process.Env);
 
@@ -691,7 +714,8 @@ fn get_image_layer_storages(
 ) {
     let mut new_storages: Vec<agent::Storage> = Vec::new();
     let mut layer_names: Vec<String> = Vec::new();
-    let mut layer_hashes: Vec<String> = Vec::new();
+    // Remove the layer_hashes related code
+    // let mut layer_hashes: Vec<String> = Vec::new();
     let mut previous_chain_id = String::new();
     let layers_count = image_layers.len();
     let mut layer_index = layers_count;
@@ -712,7 +736,8 @@ fn get_image_layer_storages(
         previous_chain_id = chain_id.clone();
 
         layer_names.push(name_to_hash(&chain_id));
-        layer_hashes.push(layer.verity_hash.to_string());
+        // Remove the verity hash part
+        // layer_hashes.push(layer.verity_hash.to_string());
         layer_index -= 1;
 
         new_storages.push(agent::Storage {
@@ -732,14 +757,16 @@ fn get_image_layer_storages(
     }
 
     layer_names.reverse();
-    layer_hashes.reverse();
+    // layer_hashes.reverse();
 
     let overlay_storage = agent::Storage {
         driver: "overlayfs".to_string(),
         driver_options: Vec::new(),
         source: String::new(), // TODO
         fstype: "fuse3.kata-overlay".to_string(),
-        options: vec![layer_names.join(":"), layer_hashes.join(":")],
+        // Remove layer_hashes from options
+        // options: vec![layer_names.join(":"), layer_hashes.join(":")],
+        options: vec![layer_names.join(":")],
         mount_point: root.Path.clone(),
         fs_group: None,
     };
