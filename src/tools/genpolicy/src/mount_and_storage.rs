@@ -22,7 +22,7 @@ pub fn get_policy_mounts(
     settings: &settings::Settings,
     p_mounts: &mut Vec<policy::KataMount>,
     yaml_container: &pod::Container,
-    is_pause_container: bool,
+    // is_pause_container: bool,
 ) {
     if let Some(volumeMounts) = &yaml_container.volumeMounts {
         for volumeMount in volumeMounts {
@@ -32,7 +32,8 @@ pub fn get_policy_mounts(
         }
     }
 
-    let c_settings = settings.get_container_settings(is_pause_container);
+    // let c_settings = settings.get_container_settings(is_pause_container);
+    let c_settings = settings.get_container_settings();
     let settings_mounts = &c_settings.Mounts;
     let rootfs_access = if yaml_container.read_only_root_filesystem() {
         "ro"
@@ -63,11 +64,11 @@ pub fn get_policy_mounts(
                 policy_mount.options = mount.options.iter().map(String::from).collect();
             } else {
                 // Add a new mount.
-                if !is_pause_container
-                    && (s_mount.destination.eq("/etc/hostname")
-                        || s_mount.destination.eq("/etc/resolv.conf"))
-                {
-                    mount.options.push(rootfs_access.to_string());
+                // if !is_pause_container
+                //     && (s_mount.destination.eq("/etc/hostname")
+                //         || s_mount.destination.eq("/etc/resolv.conf"))
+                if s_mount.destination.eq("/etc/hostname") || s_mount.destination.eq("/etc/resolv.conf") {
+                        mount.options.push(rootfs_access.to_string());
                 }
                 p_mounts.push(mount);
             }

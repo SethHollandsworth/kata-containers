@@ -79,11 +79,13 @@ impl Settings {
         }
     }
 
-    pub fn get_container_settings(&self, is_pause_container: bool) -> &policy::KataSpec {
-        if is_pause_container {
-            &self.pause_container
-        } else {
-            &self.other_container
-        }
+    // pub fn get_container_settings(&self, is_pause_container: bool) -> &policy::KataSpec {
+    pub fn get_container_settings(&self) -> &policy::KataSpec {
+        // if is_pause_container {
+        //     &self.pause_container
+        // } else {
+        //     &self.other_container
+        // }
+        &self.other_container
     }
 }

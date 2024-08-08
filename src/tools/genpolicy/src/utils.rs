@@ -79,7 +79,7 @@ struct CommandLineOptions {
 /// Application configuration, derived from on command line parameters.
 #[derive(Clone, Debug)]
 pub struct Config {
-    pub use_cache: bool,
+    // pub use_cache: bool,
 
     pub yaml_file: Option<String>,
     pub rego_rules_path: String,
@@ -97,7 +97,7 @@ impl Config {
     pub fn new() -> Self {
         let args = CommandLineOptions::parse();
         Self {
-            use_cache: args.use_cached_files,
+            // use_cache: args.use_cached_files,
             yaml_file: args.yaml_file,
             rego_rules_path: args.rego_rules_path,
             json_settings_path: args.json_settings_path,

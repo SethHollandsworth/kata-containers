@@ -115,6 +115,12 @@ fn version_default() -> String {
     DEFAULT_OCI_VERSION.to_string()
 }
 
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct KeyValueEnvVar {
+    pub key: String,
+    pub value: String,
+}
+
 /// OCI container Process struct. This struct is very similar to the Process
 /// struct generated from oci.proto. The main difference is that it preserves
 /// the upper case field names from oci.proto, for consistency with the structs
@@ -134,8 +140,11 @@ pub struct KataProcess {
     pub Args: Vec<String>,
 
     /// Env populates the process environment for the process.
+    // #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // pub Env: Vec<String>,
+
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub Env: Vec<String>,
+    pub envs: Vec<KeyValueEnvVar>,  // New field for key-value pairs
 
     /// Cwd is the current working directory for the process and must be
     /// relative to the container's root.
@@ -150,6 +159,18 @@ pub struct KataProcess {
     #[serde(default)]
     pub NoNewPrivileges: bool,
 }
+
+// impl KataProcess {
+//     fn convert_env_to_envs(&mut self) {
+//         self.envs = self.Env.iter().map(|e| {
+//             let parts: Vec<&str> = e.splitn(2, '=').collect();
+//             EnvVar {
+//                 key: parts[0].to_string(),
+//                 value: parts.get(1).cloned().unwrap_or_default().to_string(),
+//             }
+//         }).collect();
+//     }
+// }
 
 /// OCI container User struct. This struct is very similar to the User
 /// struct generated from oci.proto. The main difference is that it preserves
@@ -497,8 +518,10 @@ impl AgentPolicy {
         let yaml_containers = resource.get_containers();
         let mut policy_containers = Vec::new();
 
-        for (i, yaml_container) in yaml_containers.iter().enumerate() {
-            policy_containers.push(self.get_container_policy(resource, yaml_container, i == 0));
+        // for (i, yaml_container) in yaml_containers.iter().enumerate() {
+        for yaml_container in yaml_containers.iter() {
+            // policy_containers.push(self.get_container_policy(resource, yaml_container, i == 0));
+            policy_containers.push(self.get_container_policy(resource, yaml_container));
         }
 
         let policy_data = policy::PolicyData {
@@ -520,9 +543,9 @@ impl AgentPolicy {
         &self,
         resource: &dyn yaml::K8sResource,
         yaml_container: &pod::Container,
-        is_pause_container: bool,
+        // is_pause_container: bool,
     ) -> ContainerPolicy {
-        let c_settings = self.settings.get_container_settings(is_pause_container);
+        let c_settings = self.settings.get_container_settings();
         let mut root = c_settings.Root.clone();
         root.Readonly = yaml_container.read_only_root_filesystem();
 
@@ -536,28 +559,29 @@ impl AgentPolicy {
         let annotations = get_container_annotations(
             resource,
             yaml_container,
-            is_pause_container,
+            // is_pause_container,
             &namespace,
             c_settings,
-            use_host_network,
+            // use_host_network,
         );
 
         let is_privileged = yaml_container.is_privileged();
         let process = self.get_container_process(
             resource,
             yaml_container,
-            is_pause_container,
+            // is_pause_container,
             &namespace,
             c_settings,
             is_privileged,
         );
 
-        let mut mounts = containerd::get_mounts(is_pause_container, is_privileged);
+        // let mut mounts = containerd::get_mounts(is_pause_container, is_privileged);
+        let mut mounts = containerd::get_mounts(is_privileged);
         mount_and_storage::get_policy_mounts(
             &self.settings,
             &mut mounts,
             yaml_container,
-            is_pause_container,
+            // is_pause_container,
         );
 
         let image_layers = yaml_container.registry.get_image_layers();
@@ -572,7 +596,8 @@ impl AgentPolicy {
         );
 
         let mut linux = containerd::get_linux(is_privileged);
-        linux.Namespaces = get_kata_namespaces(is_pause_container, use_host_network);
+        // linux.Namespaces = get_kata_namespaces(is_pause_container, use_host_network);
+        linux.Namespaces = get_kata_namespaces(use_host_network);
 
         if !c_settings.Linux.MaskedPaths.is_empty() {
             linux.MaskedPaths = c_settings.Linux.MaskedPaths.clone();
@@ -581,11 +606,13 @@ impl AgentPolicy {
             linux.ReadonlyPaths = c_settings.Linux.ReadonlyPaths.clone();
         }
 
-        let sandbox_pidns = if is_pause_container {
-            false
-        } else {
-            resource.use_sandbox_pidns()
-        };
+        // let sandbox_pidns = if is_pause_container {
+        //     false
+        // } else {
+        //     resource.use_sandbox_pidns()
+        // };
+        let sandbox_pidns = resource.use_sandbox_pidns();
+
         let exec_commands = yaml_container.get_exec_commands();
 
         ContainerPolicy {
@@ -608,7 +635,7 @@ impl AgentPolicy {
         &self,
         resource: &dyn yaml::K8sResource,
         yaml_container: &pod::Container,
-        is_pause_container: bool,
+        // is_pause_container: bool,
         namespace: &str,
         c_settings: &KataSpec,
         is_privileged: bool,
@@ -626,14 +653,23 @@ impl AgentPolicy {
 
         if let Some(tty) = yaml_container.tty {
             process.Terminal = tty;
-            if tty && !is_pause_container {
-                process.Env.push("TERM=xterm".to_string());
+            // if tty && !is_pause_container {
+            if tty {
+                process.envs.push(KeyValueEnvVar {
+                    key: "TERM".to_string(),
+                    value: "xterm".to_string(),
+                });
             }
         }
 
-        if !is_pause_container {
-            process.Env.push("HOSTNAME=$(host-name)".to_string());
-        }
+        // if !is_pause_container {
+        //     process.Env.push("HOSTNAME=$(host-name)".to_string());
+        // }
+
+        process.envs.push(KeyValueEnvVar {
+            key: "HOSTNAME".to_string(),
+            value: "$(host-name)".to_string(),
+        });
 
         let service_account_name = if let Some(s) = &yaml_container.serviceAccountName {
             s
@@ -642,7 +678,8 @@ impl AgentPolicy {
         };
 
         yaml_container.get_env_variables(
-            &mut process.Env,
+            // &mut process.Env,
+            &mut process.envs,
             &self.config_maps,
             &self.secrets,
             namespace,
@@ -650,8 +687,10 @@ impl AgentPolicy {
             service_account_name,
         );
 
-        substitute_env_variables(&mut process.Env);
-        substitute_args_env_variables(&mut process.Args, &process.Env);
+        // substitute_env_variables(&mut process.Env);
+        // substitute_args_env_variables(&mut process.Args, &process.Env);
+        substitute_env_variables(&mut process.envs);
+        substitute_args_env_variables(&mut process.Args, &process.envs);
 
         c_settings.get_process_fields(&mut process);
         resource.get_process_fields(&mut process);
@@ -680,7 +719,8 @@ impl KataSpec {
         process.User.Username = String::from(&self.Process.User.Username);
         add_missing_strings(&self.Process.Args, &mut process.Args);
 
-        add_missing_strings(&self.Process.Env, &mut process.Env);
+        // add_missing_strings(&self.Process.Env, &mut process.Env);
+        add_missing_env_vars(&self.Process.envs, &mut process.envs);
     }
 }
 
@@ -691,7 +731,8 @@ fn get_image_layer_storages(
 ) {
     let mut new_storages: Vec<agent::Storage> = Vec::new();
     let mut layer_names: Vec<String> = Vec::new();
-    let mut layer_hashes: Vec<String> = Vec::new();
+    // Remove the layer_hashes related code
+    // let mut layer_hashes: Vec<String> = Vec::new();
     let mut previous_chain_id = String::new();
     let layers_count = image_layers.len();
     let mut layer_index = layers_count;
@@ -712,7 +753,8 @@ fn get_image_layer_storages(
         previous_chain_id = chain_id.clone();
 
         layer_names.push(name_to_hash(&chain_id));
-        layer_hashes.push(layer.verity_hash.to_string());
+        // Remove the verity hash part
+        // layer_hashes.push(layer.verity_hash.to_string());
         layer_index -= 1;
 
         new_storages.push(agent::Storage {
@@ -732,14 +774,16 @@ fn get_image_layer_storages(
     }
 
     layer_names.reverse();
-    layer_hashes.reverse();
+    // layer_hashes.reverse();
 
     let overlay_storage = agent::Storage {
         driver: "overlayfs".to_string(),
         driver_options: Vec::new(),
         source: String::new(), // TODO
         fstype: "fuse3.kata-overlay".to_string(),
-        options: vec![layer_names.join(":"), layer_hashes.join(":")],
+        // Remove layer_hashes from options
+        // options: vec![layer_names.join(":"), layer_hashes.join(":")],
+        options: vec![layer_names.join(":")],
         mount_point: root.Path.clone(),
         fs_group: None,
     };
@@ -777,22 +821,48 @@ fn name_to_hash(name: &str) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-fn substitute_env_variables(env: &mut Vec<String>) {
+// fn substitute_env_variables(env: &mut Vec<String>) {
+fn substitute_env_variables(envs: &mut Vec<KeyValueEnvVar>) {
     loop {
+        // let mut substituted = false;
+
+        // for i in 0..env.len() {
+        //     let components: Vec<&str> = env[i].split('=').collect();
+        //     if components.len() == 2 {
+        //         if let Some((start, end)) = find_subst_target(components[1]) {
+        //             if let Some(new_value) = substitute_variable(components[1], start, end, env) {
+        //                 let new_var = format!("{}={new_value}", &components[0]);
+        //                 debug!("Replacing env variable <{}> with <{new_var}>", &env[i]);
+        //                 env[i] = new_var;
+        //                 substituted = true;
+        //             }
+        //         }
+        //     }
+        // }
+
+        let mut substitutions = Vec::new();
         let mut substituted = false;
 
-        for i in 0..env.len() {
-            let components: Vec<&str> = env[i].split('=').collect();
-            if components.len() == 2 {
-                if let Some((start, end)) = find_subst_target(components[1]) {
-                    if let Some(new_value) = substitute_variable(components[1], start, end, env) {
-                        let new_var = format!("{}={new_value}", &components[0]);
-                        debug!("Replacing env variable <{}> with <{new_var}>", &env[i]);
-                        env[i] = new_var;
-                        substituted = true;
-                    }
+        // Iterate over mutable references to env variables
+        for (i, env_var) in envs.iter().enumerate() {
+            // Check if the value contains a substitution target
+            if let Some((start, end)) = find_subst_target(&env_var.value) {
+                // If there's a substitution target, try to replace it
+                if let Some(new_value) = substitute_variable(&env_var.value, start, end, envs) {
+                    // Record the index and new value to apply changes later
+                    substitutions.push((i, new_value));
+                    substituted = true;
                 }
             }
+        }
+
+        // Apply the recorded substitutions
+        for (i, new_value) in substitutions {
+            debug!(
+                "substitute_env_variables: replacing {} with {}",
+                envs[i].value, new_value
+            );
+            envs[i].value = new_value;
         }
 
         if !substituted {
@@ -818,7 +888,8 @@ fn substitute_variable(
     env_var: &str,
     name_start: usize,
     name_end: usize,
-    env: &Vec<String>,
+    // env: &Vec<String>,
+    envs: &Vec<KeyValueEnvVar>,
 ) -> Option<String> {
     // Variables generated by this application.
     let internal_vars = [
@@ -837,30 +908,55 @@ fn substitute_variable(
     let name = env_var[name_start..name_end].to_string();
     debug!("Searching for the value of <{}>", &name);
 
-    for other_var in env {
-        let components: Vec<&str> = other_var.split('=').collect();
-        if components[0].eq(&name) {
-            debug!("Found {} in <{}>", &name, &other_var);
-            if components.len() == 2 {
-                let mut replace = true;
-                let value = &components[1];
+    // for other_var in env {
+    //     let components: Vec<&str> = other_var.split('=').collect();
+    //     if components[0].eq(&name) {
+    //         debug!("Found {} in <{}>", &name, &other_var);
+    //         if components.len() == 2 {
+    //             let mut replace = true;
+    //             let value = &components[1];
 
-                if let Some((start, end)) = find_subst_target(value) {
-                    if internal_vars.contains(&&value[start..end]) {
-                        // Variables used internally for Policy don't get expanded
-                        // in the current design, so it's OK to use them as replacement
-                        // in other env variables or command arguments.
-                    } else {
-                        // Don't substitute if the value includes variables to be
-                        // substituted, to avoid circular substitutions.
-                        replace = false;
-                    }
-                }
+    //             if let Some((start, end)) = find_subst_target(value) {
+    //                 if internal_vars.contains(&&value[start..end]) {
+    //                     // Variables used internally for Policy don't get expanded
+    //                     // in the current design, so it's OK to use them as replacement
+    //                     // in other env variables or command arguments.
+    //                 } else {
+    //                     // Don't substitute if the value includes variables to be
+    //                     // substituted, to avoid circular substitutions.
+    //                     replace = false;
+    //                 }
+    //             }
 
-                if replace {
-                    let from = format!("$({name})");
-                    return Some(env_var.replace(&from, value));
+    //             if replace {
+    //                 let from = format!("$({name})");
+    //                 return Some(env_var.replace(&from, value));
+    //             }
+    //         }
+    //     }
+    // }
+
+    for other_var in envs {
+        if other_var.key == name {
+            debug!("Found {} in <{}>", &name, &other_var.value);
+            let value = &other_var.value;
+            let mut replace = true;
+
+            if let Some((start, end)) = find_subst_target(value) {
+                if internal_vars.contains(&&value[start..end]) {
+                    // Variables used internally for Policy don't get expanded
+                    // in the current design, so it's OK to use them as replacement
+                    // in other env variables or command arguments.
+                } else {
+                    // Don't substitute if the value includes variables to be
+                    // substituted, to avoid circular substitutions.
+                    replace = false;
                 }
+            }
+
+            if replace {
+                let from = format!("$({name})");
+                return Some(env_var.replace(&from, value));
             }
         }
     }
@@ -868,18 +964,26 @@ fn substitute_variable(
     None
 }
 
-fn substitute_args_env_variables(args: &mut Vec<String>, env: &Vec<String>) {
-    for arg in args {
-        substitute_arg_env_variables(arg, env);
+// fn substitute_args_env_variables(args: &mut Vec<String>, env: &Vec<String>) {
+//     for arg in args {
+//         substitute_arg_env_variables(arg, env);
+//     }
+// }
+
+fn substitute_args_env_variables(args: &mut Vec<String>, envs: &Vec<KeyValueEnvVar>) {
+    for arg in args.iter_mut() {
+        substitute_arg_env_variables(arg, envs);
     }
 }
 
-fn substitute_arg_env_variables(arg: &mut String, env: &Vec<String>) {
+// fn substitute_arg_env_variables(arg: &mut String, env: &Vec<String>) {
+fn substitute_arg_env_variables(arg: &mut String, envs: &Vec<KeyValueEnvVar>) {
     loop {
         let mut substituted = false;
 
         if let Some((start, end)) = find_subst_target(arg) {
-            if let Some(new_value) = substitute_variable(arg, start, end, env) {
+            // if let Some(new_value) = substitute_variable(arg, start, end, env) {
+            if let Some(new_value) = substitute_variable(arg, start, end, envs) {
                 debug!(
                     "substitute_arg_env_variables: replacing {} with {}",
                     &arg[start..end],
@@ -899,10 +1003,10 @@ fn substitute_arg_env_variables(arg: &mut String, env: &Vec<String>) {
 fn get_container_annotations(
     resource: &dyn yaml::K8sResource,
     yaml_container: &pod::Container,
-    is_pause_container: bool,
+    // is_pause_container: bool,
     namespace: &str,
     c_settings: &KataSpec,
-    use_host_network: bool,
+    // use_host_network: bool,
 ) -> BTreeMap<String, String> {
     let mut annotations = if let Some(a) = resource.get_annotations() {
         let mut a_cloned = a.clone();
@@ -920,15 +1024,23 @@ fn get_container_annotations(
             .or_insert(name);
     }
 
-    if !is_pause_container {
-        let mut image_name = yaml_container.image.clone();
-        if image_name.find(':').is_none() {
-            image_name += ":latest";
-        }
-        annotations
-            .entry("io.kubernetes.cri.image-name".to_string())
-            .or_insert(image_name);
+    // if !is_pause_container {
+    //     let mut image_name = yaml_container.image.clone();
+    //     if image_name.find(':').is_none() {
+    //         image_name += ":latest";
+    //     }
+    //     annotations
+    //         .entry("io.kubernetes.cri.image-name".to_string())
+    //         .or_insert(image_name);
+    // }
+
+    let mut image_name = yaml_container.image.clone();
+    if image_name.find(':').is_none() {
+        image_name += ":latest";
     }
+    annotations
+        .entry("io.kubernetes.cri.image-name".to_string())
+        .or_insert(image_name);
 
     annotations.insert(
         "io.kubernetes.cri.sandbox-namespace".to_string(),
@@ -941,18 +1053,27 @@ fn get_container_annotations(
             .or_insert(yaml_container.name.clone());
     }
 
-    if is_pause_container {
-        let mut network_namespace = "^/var/run/netns/cni".to_string();
-        if use_host_network {
-            network_namespace += "test";
-        }
-        network_namespace += "-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
-        annotations
-            .entry("nerdctl/network-namespace".to_string())
-            .or_insert(network_namespace);
-    }
+    // if is_pause_container {
+    //     let mut network_namespace = "^/var/run/netns/cni".to_string();
+    //     if use_host_network {
+    //         network_namespace += "test";
+    //     }
+    //     network_namespace += "-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
+    //     annotations
+    //         .entry("nerdctl/network-namespace".to_string())
+    //         .or_insert(network_namespace);
+    // }
 
     annotations
+}
+
+fn add_missing_env_vars(src: &Vec<KeyValueEnvVar>, dest: &mut Vec<KeyValueEnvVar>) {
+    for src_var in src {
+        if !dest.iter().any(|dest_var| dest_var.key == src_var.key) {
+            dest.push(src_var.clone());
+        }
+    }
+    debug!("src = {:?}, dest = {:?}", src, dest);
 }
 
 fn add_missing_strings(src: &Vec<String>, dest: &mut Vec<String>) {
@@ -965,7 +1086,7 @@ fn add_missing_strings(src: &Vec<String>, dest: &mut Vec<String>) {
 }
 
 pub fn get_kata_namespaces(
-    is_pause_container: bool,
+    // is_pause_container: bool,
     use_host_network: bool,
 ) -> Vec<KataLinuxNamespace> {
     let mut namespaces: Vec<KataLinuxNamespace> = vec![KataLinuxNamespace {
@@ -973,7 +1094,8 @@ pub fn get_kata_namespaces(
         Path: "".to_string(),
     }];
 
-    if !is_pause_container || !use_host_network {
+    // if !is_pause_container || !use_host_network {
+    if !use_host_network {
         namespaces.push(KataLinuxNamespace {
             Type: "uts".to_string(),
             Path: "".to_string(),

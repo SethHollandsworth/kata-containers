@@ -4,6 +4,7 @@
 //
 
 use crate::policy;
+use crate::policy::KeyValueEnvVar;
 
 // Default process field from containerd.
 pub fn get_process(privileged_container: bool, common: &policy::CommonData) -> policy::KataProcess {
@@ -29,7 +30,8 @@ pub fn get_process(privileged_container: bool, common: &policy::CommonData) -> p
         Terminal: false,
         User: Default::default(),
         Args: Vec::new(),
-        Env: Vec::new(),
+        // Env: Vec::new(),
+        envs: Vec::new(),
         Cwd: "/".to_string(),
         Capabilities: capabilities,
         NoNewPrivileges: false,
@@ -37,7 +39,8 @@ pub fn get_process(privileged_container: bool, common: &policy::CommonData) -> p
 }
 
 // Default mounts field from containerd.
-pub fn get_mounts(is_pause_container: bool, privileged_container: bool) -> Vec<policy::KataMount> {
+// pub fn get_mounts(is_pause_container: bool, privileged_container: bool) -> Vec<policy::KataMount> {
+pub fn get_mounts(privileged_container: bool) -> Vec<policy::KataMount> {
     let sysfs_read_write_option = if privileged_container { "rw" } else { "ro" };
 
     let mut mounts = vec![
@@ -110,20 +113,33 @@ pub fn get_mounts(is_pause_container: bool, privileged_container: bool) -> Vec<p
         },
     ];
 
-    if !is_pause_container {
-        mounts.push(policy::KataMount {
-            destination: "/sys/fs/cgroup".to_string(),
-            type_: "cgroup".to_string(),
-            source: "cgroup".to_string(),
-            options: vec![
-                "nosuid".to_string(),
-                "noexec".to_string(),
-                "nodev".to_string(),
-                "relatime".to_string(),
-                sysfs_read_write_option.to_string(),
-            ],
-        });
-    }
+    // if !is_pause_container {
+    //     mounts.push(policy::KataMount {
+    //         destination: "/sys/fs/cgroup".to_string(),
+    //         type_: "cgroup".to_string(),
+    //         source: "cgroup".to_string(),
+    //         options: vec![
+    //             "nosuid".to_string(),
+    //             "noexec".to_string(),
+    //             "nodev".to_string(),
+    //             "relatime".to_string(),
+    //             sysfs_read_write_option.to_string(),
+    //         ],
+    //     });
+    // }
+
+    mounts.push(policy::KataMount {
+        destination: "/sys/fs/cgroup".to_string(),
+        type_: "cgroup".to_string(),
+        source: "cgroup".to_string(),
+        options: vec![
+            "nosuid".to_string(),
+            "noexec".to_string(),
+            "nodev".to_string(),
+            "relatime".to_string(),
+            sysfs_read_write_option.to_string(),
+        ],
+    });
 
     mounts
 }
@@ -162,9 +178,12 @@ pub fn get_linux(privileged_container: bool) -> policy::KataLinux {
     }
 }
 
-pub fn get_default_unix_env(env: &mut Vec<String>) {
-    assert!(env.is_empty());
+pub fn get_default_unix_env(envs: &mut Vec<KeyValueEnvVar>) {
+    assert!(envs.is_empty());
 
     // Return the value of defaultUnixEnv from containerd.
-    env.push("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin".to_string());
+    envs.push(KeyValueEnvVar {
+        key: "PATH".to_string(),
+        value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin".to_string(),
+    });
 }
