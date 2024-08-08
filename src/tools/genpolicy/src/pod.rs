@@ -10,6 +10,7 @@ use crate::agent;
 use crate::config_map;
 use crate::obj_meta;
 use crate::policy;
+use crate::policy::KeyValueEnvVar;
 use crate::pvc;
 use crate::registry;
 use crate::secret;
@@ -576,7 +577,8 @@ impl Container {
 
     pub fn get_env_variables(
         &self,
-        dest_env: &mut Vec<String>,
+        // dest_env: &mut Vec<String>,
+        dest_env: &mut Vec<KeyValueEnvVar>,
         config_maps: &Vec<config_map::ConfigMap>,
         secrets: &Vec<secret::Secret>,
         namespace: &str,
@@ -592,10 +594,19 @@ impl Container {
                     annotations,
                     service_account_name,
                 );
-                let src_string = format!("{}={value}", &env_variable.name);
+                
+                // let src_string = format!("{}={value}", &env_variable.name);
+                let env_var = KeyValueEnvVar {
+                    key: env_variable.name.clone(),
+                    value,
+                };
 
-                if !dest_env.contains(&src_string) {
-                    dest_env.push(src_string.clone());
+                // if !dest_env.contains(&src_string) {
+                //     dest_env.push(src_string.clone());
+                // }
+
+                if !dest_env.iter().any(|e| e.key == env_var.key) {
+                    dest_env.push(env_var);
                 }
             }
         }
@@ -604,9 +615,15 @@ impl Container {
             for env_from_source in env_from_sources {
                 let env_from_source_values = env_from_source.get_values(config_maps, secrets);
 
-                for value in env_from_source_values {
-                    if !dest_env.contains(&value) {
-                        dest_env.push(value.clone());
+                // for value in env_from_source_values {
+                //     if !dest_env.contains(&value) {
+                //         dest_env.push(value.clone());
+                //     }
+                // }
+                
+                for env_var in env_from_source_values {
+                    if !dest_env.iter().any(|e| e.key == env_var.key) {
+                        dest_env.push(env_var);
                     }
                 }
             }
@@ -697,7 +714,8 @@ impl EnvFromSource {
         &self,
         config_maps: &Vec<config_map::ConfigMap>,
         secrets: &Vec<secret::Secret>,
-    ) -> Vec<String> {
+    ) -> Vec<KeyValueEnvVar> {
+    //) -> Vec<String> {
         if let Some(config_map_env_source) = &self.configMapRef {
             if let Some(value) = config_map::get_values(&config_map_env_source.name, config_maps) {
                 return value.clone();

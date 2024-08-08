@@ -10,6 +10,7 @@ use crate::agent;
 use crate::obj_meta;
 use crate::pod;
 use crate::policy;
+use crate::policy::KeyValueEnvVar;
 use crate::pvc;
 use crate::settings;
 use crate::utils::Config;
@@ -58,16 +59,23 @@ impl ConfigMap {
         None
     }
 
-    pub fn get_key_value_pairs(&self) -> Option<Vec<String>> {
-        //eg ["key1=value1", "key2=value2"]
+    // pub fn get_key_value_pairs(&self) -> Option<Vec<String>> {
+        // //eg ["key1=value1", "key2=value2"]
+    pub fn get_key_value_pairs(&self) -> Option<Vec<KeyValueEnvVar>> {
         self.data
             .as_ref()?
-            .keys()
-            .map(|key| {
-                let value = self.data.as_ref().unwrap().get(key).unwrap();
-                format!("{key}={value}")
+            //.keys()
+            .iter()
+            .map(|(key, value)| KeyValueEnvVar {
+                key: key.clone(),
+                value: value.clone(),
             })
-            .collect::<Vec<String>>()
+            // .map(|key| {
+            //     let value = self.data.as_ref().unwrap().get(key).unwrap();
+            //     format!("{key}={value}")
+            // })
+            // .collect::<Vec<String>>()
+            .collect::<Vec<KeyValueEnvVar>>()
             .into()
     }
 }
@@ -82,7 +90,8 @@ pub fn get_value(value_from: &pod::EnvVarSource, config_maps: &Vec<ConfigMap>) -
     None
 }
 
-pub fn get_values(config_map_name: &str, config_maps: &Vec<ConfigMap>) -> Option<Vec<String>> {
+// pub fn get_values(config_map_name: &str, config_maps: &Vec<ConfigMap>) -> Option<Vec<String>> {
+pub fn get_values(config_map_name: &str, config_maps: &Vec<ConfigMap>) -> Option<Vec<KeyValueEnvVar>> {
     for config_map in config_maps {
         if let Some(existing_configmap_name) = &config_map.metadata.name {
             if config_map_name == existing_configmap_name {

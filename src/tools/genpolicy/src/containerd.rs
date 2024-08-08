@@ -4,6 +4,7 @@
 //
 
 use crate::policy;
+use crate::policy::KeyValueEnvVar;
 
 // Default process field from containerd.
 pub fn get_process(privileged_container: bool, common: &policy::CommonData) -> policy::KataProcess {
@@ -29,7 +30,7 @@ pub fn get_process(privileged_container: bool, common: &policy::CommonData) -> p
         Terminal: false,
         User: Default::default(),
         Args: Vec::new(),
-        Env: Vec::new(),
+        // Env: Vec::new(),
         envs: Vec::new(),
         Cwd: "/".to_string(),
         Capabilities: capabilities,
@@ -177,9 +178,12 @@ pub fn get_linux(privileged_container: bool) -> policy::KataLinux {
     }
 }
 
-pub fn get_default_unix_env(env: &mut Vec<String>) {
-    assert!(env.is_empty());
+pub fn get_default_unix_env(envs: &mut Vec<KeyValueEnvVar>) {
+    assert!(envs.is_empty());
 
     // Return the value of defaultUnixEnv from containerd.
-    env.push("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin".to_string());
+    envs.push(KeyValueEnvVar {
+        key: "PATH".to_string(),
+        value: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin".to_string(),
+    });
 }

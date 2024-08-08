@@ -116,7 +116,7 @@ fn version_default() -> String {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub struct EnvVar {
+pub struct KeyValueEnvVar {
     pub key: String,
     pub value: String,
 }
@@ -140,11 +140,11 @@ pub struct KataProcess {
     pub Args: Vec<String>,
 
     /// Env populates the process environment for the process.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub Env: Vec<String>,
+    // #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    // pub Env: Vec<String>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub envs: Vec<EnvVar>,  // New field for key-value pairs
+    pub envs: Vec<KeyValueEnvVar>,  // New field for key-value pairs
 
     /// Cwd is the current working directory for the process and must be
     /// relative to the container's root.
@@ -160,17 +160,17 @@ pub struct KataProcess {
     pub NoNewPrivileges: bool,
 }
 
-impl KataProcess {
-    fn convert_env_to_envs(&mut self) {
-        self.envs = self.Env.iter().map(|e| {
-            let parts: Vec<&str> = e.splitn(2, '=').collect();
-            EnvVar {
-                key: parts[0].to_string(),
-                value: parts.get(1).cloned().unwrap_or_default().to_string(),
-            }
-        }).collect();
-    }
-}
+// impl KataProcess {
+//     fn convert_env_to_envs(&mut self) {
+//         self.envs = self.Env.iter().map(|e| {
+//             let parts: Vec<&str> = e.splitn(2, '=').collect();
+//             EnvVar {
+//                 key: parts[0].to_string(),
+//                 value: parts.get(1).cloned().unwrap_or_default().to_string(),
+//             }
+//         }).collect();
+//     }
+// }
 
 /// OCI container User struct. This struct is very similar to the User
 /// struct generated from oci.proto. The main difference is that it preserves
@@ -655,7 +655,10 @@ impl AgentPolicy {
             process.Terminal = tty;
             // if tty && !is_pause_container {
             if tty {
-                process.Env.push("TERM=xterm".to_string());
+                process.envs.push(KeyValueEnvVar {
+                    key: "TERM".to_string(),
+                    value: "xterm".to_string(),
+                });
             }
         }
 
@@ -663,7 +666,10 @@ impl AgentPolicy {
         //     process.Env.push("HOSTNAME=$(host-name)".to_string());
         // }
 
-        process.Env.push("HOSTNAME=$(host-name)".to_string());
+        process.envs.push(KeyValueEnvVar {
+            key: "HOSTNAME".to_string(),
+            value: "$(host-name)".to_string(),
+        });
 
         let service_account_name = if let Some(s) = &yaml_container.serviceAccountName {
             s
@@ -672,7 +678,8 @@ impl AgentPolicy {
         };
 
         yaml_container.get_env_variables(
-            &mut process.Env,
+            // &mut process.Env,
+            &mut process.envs,
             &self.config_maps,
             &self.secrets,
             namespace,
@@ -680,10 +687,10 @@ impl AgentPolicy {
             service_account_name,
         );
 
-        process.convert_env_to_envs();
-
-        substitute_env_variables(&mut process.Env);
-        substitute_args_env_variables(&mut process.Args, &process.Env);
+        // substitute_env_variables(&mut process.Env);
+        // substitute_args_env_variables(&mut process.Args, &process.Env);
+        substitute_env_variables(&mut process.envs);
+        substitute_args_env_variables(&mut process.Args, &process.envs);
 
         c_settings.get_process_fields(&mut process);
         resource.get_process_fields(&mut process);
@@ -712,7 +719,8 @@ impl KataSpec {
         process.User.Username = String::from(&self.Process.User.Username);
         add_missing_strings(&self.Process.Args, &mut process.Args);
 
-        add_missing_strings(&self.Process.Env, &mut process.Env);
+        // add_missing_strings(&self.Process.Env, &mut process.Env);
+        add_missing_env_vars(&self.Process.envs, &mut process.envs);
     }
 }
 
@@ -813,22 +821,48 @@ fn name_to_hash(name: &str) -> String {
     format!("{:x}", hasher.finalize())
 }
 
-fn substitute_env_variables(env: &mut Vec<String>) {
+// fn substitute_env_variables(env: &mut Vec<String>) {
+fn substitute_env_variables(envs: &mut Vec<KeyValueEnvVar>) {
     loop {
+        // let mut substituted = false;
+
+        // for i in 0..env.len() {
+        //     let components: Vec<&str> = env[i].split('=').collect();
+        //     if components.len() == 2 {
+        //         if let Some((start, end)) = find_subst_target(components[1]) {
+        //             if let Some(new_value) = substitute_variable(components[1], start, end, env) {
+        //                 let new_var = format!("{}={new_value}", &components[0]);
+        //                 debug!("Replacing env variable <{}> with <{new_var}>", &env[i]);
+        //                 env[i] = new_var;
+        //                 substituted = true;
+        //             }
+        //         }
+        //     }
+        // }
+
+        let mut substitutions = Vec::new();
         let mut substituted = false;
 
-        for i in 0..env.len() {
-            let components: Vec<&str> = env[i].split('=').collect();
-            if components.len() == 2 {
-                if let Some((start, end)) = find_subst_target(components[1]) {
-                    if let Some(new_value) = substitute_variable(components[1], start, end, env) {
-                        let new_var = format!("{}={new_value}", &components[0]);
-                        debug!("Replacing env variable <{}> with <{new_var}>", &env[i]);
-                        env[i] = new_var;
-                        substituted = true;
-                    }
+        // Iterate over mutable references to env variables
+        for (i, env_var) in envs.iter().enumerate() {
+            // Check if the value contains a substitution target
+            if let Some((start, end)) = find_subst_target(&env_var.value) {
+                // If there's a substitution target, try to replace it
+                if let Some(new_value) = substitute_variable(&env_var.value, start, end, envs) {
+                    // Record the index and new value to apply changes later
+                    substitutions.push((i, new_value));
+                    substituted = true;
                 }
             }
+        }
+
+        // Apply the recorded substitutions
+        for (i, new_value) in substitutions {
+            debug!(
+                "substitute_env_variables: replacing {} with {}",
+                envs[i].value, new_value
+            );
+            envs[i].value = new_value;
         }
 
         if !substituted {
@@ -854,7 +888,8 @@ fn substitute_variable(
     env_var: &str,
     name_start: usize,
     name_end: usize,
-    env: &Vec<String>,
+    // env: &Vec<String>,
+    envs: &Vec<KeyValueEnvVar>,
 ) -> Option<String> {
     // Variables generated by this application.
     let internal_vars = [
@@ -873,30 +908,55 @@ fn substitute_variable(
     let name = env_var[name_start..name_end].to_string();
     debug!("Searching for the value of <{}>", &name);
 
-    for other_var in env {
-        let components: Vec<&str> = other_var.split('=').collect();
-        if components[0].eq(&name) {
-            debug!("Found {} in <{}>", &name, &other_var);
-            if components.len() == 2 {
-                let mut replace = true;
-                let value = &components[1];
+    // for other_var in env {
+    //     let components: Vec<&str> = other_var.split('=').collect();
+    //     if components[0].eq(&name) {
+    //         debug!("Found {} in <{}>", &name, &other_var);
+    //         if components.len() == 2 {
+    //             let mut replace = true;
+    //             let value = &components[1];
 
-                if let Some((start, end)) = find_subst_target(value) {
-                    if internal_vars.contains(&&value[start..end]) {
-                        // Variables used internally for Policy don't get expanded
-                        // in the current design, so it's OK to use them as replacement
-                        // in other env variables or command arguments.
-                    } else {
-                        // Don't substitute if the value includes variables to be
-                        // substituted, to avoid circular substitutions.
-                        replace = false;
-                    }
-                }
+    //             if let Some((start, end)) = find_subst_target(value) {
+    //                 if internal_vars.contains(&&value[start..end]) {
+    //                     // Variables used internally for Policy don't get expanded
+    //                     // in the current design, so it's OK to use them as replacement
+    //                     // in other env variables or command arguments.
+    //                 } else {
+    //                     // Don't substitute if the value includes variables to be
+    //                     // substituted, to avoid circular substitutions.
+    //                     replace = false;
+    //                 }
+    //             }
 
-                if replace {
-                    let from = format!("$({name})");
-                    return Some(env_var.replace(&from, value));
+    //             if replace {
+    //                 let from = format!("$({name})");
+    //                 return Some(env_var.replace(&from, value));
+    //             }
+    //         }
+    //     }
+    // }
+
+    for other_var in envs {
+        if other_var.key == name {
+            debug!("Found {} in <{}>", &name, &other_var.value);
+            let value = &other_var.value;
+            let mut replace = true;
+
+            if let Some((start, end)) = find_subst_target(value) {
+                if internal_vars.contains(&&value[start..end]) {
+                    // Variables used internally for Policy don't get expanded
+                    // in the current design, so it's OK to use them as replacement
+                    // in other env variables or command arguments.
+                } else {
+                    // Don't substitute if the value includes variables to be
+                    // substituted, to avoid circular substitutions.
+                    replace = false;
                 }
+            }
+
+            if replace {
+                let from = format!("$({name})");
+                return Some(env_var.replace(&from, value));
             }
         }
     }
@@ -904,18 +964,26 @@ fn substitute_variable(
     None
 }
 
-fn substitute_args_env_variables(args: &mut Vec<String>, env: &Vec<String>) {
-    for arg in args {
-        substitute_arg_env_variables(arg, env);
+// fn substitute_args_env_variables(args: &mut Vec<String>, env: &Vec<String>) {
+//     for arg in args {
+//         substitute_arg_env_variables(arg, env);
+//     }
+// }
+
+fn substitute_args_env_variables(args: &mut Vec<String>, envs: &Vec<KeyValueEnvVar>) {
+    for arg in args.iter_mut() {
+        substitute_arg_env_variables(arg, envs);
     }
 }
 
-fn substitute_arg_env_variables(arg: &mut String, env: &Vec<String>) {
+// fn substitute_arg_env_variables(arg: &mut String, env: &Vec<String>) {
+fn substitute_arg_env_variables(arg: &mut String, envs: &Vec<KeyValueEnvVar>) {
     loop {
         let mut substituted = false;
 
         if let Some((start, end)) = find_subst_target(arg) {
-            if let Some(new_value) = substitute_variable(arg, start, end, env) {
+            // if let Some(new_value) = substitute_variable(arg, start, end, env) {
+            if let Some(new_value) = substitute_variable(arg, start, end, envs) {
                 debug!(
                     "substitute_arg_env_variables: replacing {} with {}",
                     &arg[start..end],
@@ -997,6 +1065,15 @@ fn get_container_annotations(
     // }
 
     annotations
+}
+
+fn add_missing_env_vars(src: &Vec<KeyValueEnvVar>, dest: &mut Vec<KeyValueEnvVar>) {
+    for src_var in src {
+        if !dest.iter().any(|dest_var| dest_var.key == src_var.key) {
+            dest.push(src_var.clone());
+        }
+    }
+    debug!("src = {:?}, dest = {:?}", src, dest);
 }
 
 fn add_missing_strings(src: &Vec<String>, dest: &mut Vec<String>) {

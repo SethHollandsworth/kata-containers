@@ -8,6 +8,7 @@
 
 use crate::containerd;
 use crate::policy;
+use crate::policy::KeyValueEnvVar;
 // use crate::verity;
 
 use crate::utils::Config;
@@ -97,6 +98,7 @@ impl Container {
 
                 let config_layer: DockerConfigLayer =
                     serde_json::from_str(&config_layer_str).unwrap();
+
                 let image_layers = get_image_layers(
                     // use_cached_files,
                     // &mut client,
@@ -166,13 +168,22 @@ impl Container {
             process.Terminal = false;
         }
 
-        assert!(process.Env.is_empty());
+        // assert!(process.Env.is_empty());
+        // if let Some(config_env) = &docker_config.Env {
+        //     for env in config_env {
+        //         process.Env.push(env.clone());
+        //     }
+        assert!(process.envs.is_empty());
         if let Some(config_env) = &docker_config.Env {
             for env in config_env {
-                process.Env.push(env.clone());
+                let parts: Vec<&str> = env.splitn(2, '=').collect();
+                process.envs.push(KeyValueEnvVar {
+                    key: parts[0].to_string(),
+                    value: parts.get(1).cloned().unwrap_or_default().to_string(),
+                });
             }
         } else {
-            containerd::get_default_unix_env(&mut process.Env);
+            containerd::get_default_unix_env(&mut process.envs);
         }
 
         let policy_args = &mut process.Args;

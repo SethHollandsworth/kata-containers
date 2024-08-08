@@ -10,6 +10,7 @@ use crate::agent;
 use crate::obj_meta;
 use crate::pod;
 use crate::policy;
+use crate::policy::KeyValueEnvVar;
 use crate::pvc;
 use crate::settings;
 use crate::utils::Config;
@@ -62,18 +63,29 @@ impl Secret {
         None
     }
 
-    pub fn get_key_value_pairs(&self) -> Option<Vec<String>> {
+    // pub fn get_key_value_pairs(&self) -> Option<Vec<String>> {
         //eg ["key1=secret1", "key2=secret2"]
+    pub fn get_key_value_pairs(&self) -> Option<Vec<KeyValueEnvVar>> {
         self.data
             .as_ref()?
-            .keys()
-            .map(|key| {
-                let value = self.data.as_ref().unwrap().get(key).unwrap();
+            // .keys()
+            .iter()
+            .map(|(key, value)| {
                 let value_bytes = general_purpose::STANDARD.decode(value).unwrap();
                 let value_string = std::str::from_utf8(&value_bytes).unwrap();
-                format!("{key}={value_string}")
+                KeyValueEnvVar {
+                    key: key.clone(),
+                    value: value_string.to_string(),
+                }
             })
-            .collect::<Vec<String>>()
+            // .map(|key| {
+            //     let value = self.data.as_ref().unwrap().get(key).unwrap();
+            //     let value_bytes = general_purpose::STANDARD.decode(value).unwrap();
+            //     let value_string = std::str::from_utf8(&value_bytes).unwrap();
+            //     format!("{key}={value_string}")
+            // })
+            // .collect::<Vec<String>>()
+            .collect::<Vec<KeyValueEnvVar>>()
             .into()
     }
 }
@@ -88,7 +100,8 @@ pub fn get_value(value_from: &pod::EnvVarSource, secrets: &Vec<Secret>) -> Optio
     None
 }
 
-pub fn get_values(secret_name: &str, secrets: &Vec<Secret>) -> Option<Vec<String>> {
+// pub fn get_values(secret_name: &str, secrets: &Vec<Secret>) -> Option<Vec<String>> {
+pub fn get_values(secret_name: &str, secrets: &Vec<Secret>) -> Option<Vec<KeyValueEnvVar>> {
     for secret in secrets {
         if let Some(existing_secret_name) = &secret.metadata.name {
             if existing_secret_name == secret_name {
