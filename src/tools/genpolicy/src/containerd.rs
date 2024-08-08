@@ -148,32 +148,42 @@ pub fn get_mounts(privileged_container: bool) -> Vec<policy::KataMount> {
 pub fn get_linux(privileged_container: bool) -> policy::KataLinux {
     if !privileged_container {
         policy::KataLinux {
+            SecurityContext: policy::SecurityContext {
+                RunAsGroup: 0,
+                RunAsUser: 0,
+                RunAsNonRoot: true,
+                MaskedPaths: vec![
+                    "/proc/asound".to_string(),
+                    "/proc/acpi".to_string(),
+                    "/proc/kcore".to_string(),
+                    "/proc/keys".to_string(),
+                    "/proc/latency_stats".to_string(),
+                    "/proc/timer_list".to_string(),
+                    "/proc/timer_stats".to_string(),
+                    "/proc/sched_debug".to_string(),
+                    "/proc/scsi".to_string(),
+                    "/sys/firmware".to_string(),
+                ],
+                ReadonlyPaths: vec![
+                    "/proc/bus".to_string(),
+                    "/proc/fs".to_string(),
+                    "/proc/irq".to_string(),
+                    "/proc/sys".to_string(),
+                    "/proc/sysrq-trigger".to_string(),
+                ],
+            },
             Namespaces: vec![],
-            MaskedPaths: vec![
-                "/proc/acpi".to_string(),
-                "/proc/kcore".to_string(),
-                "/proc/keys".to_string(),
-                "/proc/latency_stats".to_string(),
-                "/proc/timer_list".to_string(),
-                "/proc/timer_stats".to_string(),
-                "/proc/sched_debug".to_string(),
-                "/proc/scsi".to_string(),
-                "/sys/firmware".to_string(),
-            ],
-            ReadonlyPaths: vec![
-                "/proc/asound".to_string(),
-                "/proc/bus".to_string(),
-                "/proc/fs".to_string(),
-                "/proc/irq".to_string(),
-                "/proc/sys".to_string(),
-                "/proc/sysrq-trigger".to_string(),
-            ],
         }
     } else {
         policy::KataLinux {
+            SecurityContext: policy::SecurityContext {
+                MaskedPaths: vec![],
+                ReadonlyPaths: vec![],
+                RunAsGroup: 0,
+                RunAsUser: 0,
+                RunAsNonRoot: true,
+            },
             Namespaces: vec![],
-            MaskedPaths: vec![],
-            ReadonlyPaths: vec![],
         }
     }
 }

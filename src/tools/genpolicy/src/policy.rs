@@ -69,7 +69,7 @@ pub struct PolicyData {
     pub common: CommonData,
 
     /// Sandbox settings read from genpolicy-settings.json.
-    pub sandbox: SandboxData,
+    // pub sandbox: SandboxData,
 
     /// Settings read from genpolicy-settings.json, related directly to each
     /// kata agent endpoint, that get added to the output policy.
@@ -214,12 +214,29 @@ pub struct KataLinux {
     #[serde(default)]
     pub Namespaces: Vec<KataLinuxNamespace>,
 
+    /// SecurityContext holds container security settings.
+    pub SecurityContext: SecurityContext,
+}
+
+/// CRI Container securityContext struct.
+#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+pub struct SecurityContext {
     /// MaskedPaths masks over the provided paths inside the container.
     pub MaskedPaths: Vec<String>,
 
     /// ReadonlyPaths sets the provided paths as RO inside the container.
     pub ReadonlyPaths: Vec<String>,
+
+    /// RunAsGroup is the primary group of the container process.
+    pub RunAsGroup: i64,
+
+    /// RunAsNonRoot indicates that the container must run as a non-root user.
+    pub RunAsNonRoot: bool,
+
+    /// RunAsUser is the UID of the container process.
+    pub RunAsUser: i64,
 }
+
 
 /// OCI container LinuxNamespace struct. This struct is similar to the LinuxNamespace
 /// struct generated from oci.proto, but includes just the fields that are currently
@@ -414,11 +431,11 @@ pub struct CommonData {
 }
 
 /// Struct used to read data from the settings file and copy that data into the policy.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SandboxData {
-    /// Expected value of the CreateSandboxRequest storages field.
-    pub storages: Vec<agent::Storage>,
-}
+// #[derive(Clone, Debug, Serialize, Deserialize)]
+// pub struct SandboxData {
+//     /// Expected value of the CreateSandboxRequest storages field.
+//     pub storages: Vec<agent::Storage>,
+// }
 
 /// Configuration from "kubectl config".
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -538,7 +555,7 @@ impl AgentPolicy {
             containers: policy_containers,
             request_defaults: self.settings.request_defaults.clone(),
             common: self.settings.common.clone(),
-            sandbox: self.settings.sandbox.clone(),
+            // sandbox: self.settings.sandbox.clone(),
         };
 
         let json_data = serde_json::to_string_pretty(&policy_data).unwrap();
@@ -609,11 +626,11 @@ impl AgentPolicy {
         // linux.Namespaces = get_kata_namespaces(is_pause_container, use_host_network);
         linux.Namespaces = get_kata_namespaces(use_host_network);
 
-        if !c_settings.Linux.MaskedPaths.is_empty() {
-            linux.MaskedPaths = c_settings.Linux.MaskedPaths.clone();
+        if !c_settings.Linux.SecurityContext.MaskedPaths.is_empty() {
+            linux.SecurityContext.MaskedPaths = c_settings.Linux.SecurityContext.MaskedPaths.clone();
         }
-        if !c_settings.Linux.ReadonlyPaths.is_empty() {
-            linux.ReadonlyPaths = c_settings.Linux.ReadonlyPaths.clone();
+        if !c_settings.Linux.SecurityContext.ReadonlyPaths.is_empty() {
+            linux.SecurityContext.ReadonlyPaths = c_settings.Linux.SecurityContext.ReadonlyPaths.clone();
         }
 
         // let sandbox_pidns = if is_pause_container {

@@ -1,216 +1,55 @@
 {
-    "pause_container": {
-        "Root": {
-            "Path": "$(cpath)/$(bundle-id)",
-            "Readonly": true
-        },
-        "Mounts": [
+    "podSandboxId": "^[a-z0-9]{64}$",
+    "container": {
+        "mounts": [
             {
-                "destination": "/dev/shm",
-                "type_": "bind",
-                "source": "/run/kata-containers/sandbox/shm",
-                "options": [
-                    "rbind"
-                ]
+                "containerPath": "/etc/hosts"
             },
             {
-                "destination": "/etc/resolv.conf",
-                "type_": "bind",
-                "options": [
-                    "rbind",
-                    "ro",
-                    "nosuid",
-                    "nodev",
-                    "noexec"
-                ]
+                "containerPath": "/dev/termination-log"
+            },
+            {
+                "containerPath": "/var/run/secrets/kubernetes.io/serviceaccount",
+                "readonly": true
+            },
+            {
+                "containerPath": "/var/run/secrets/azure/tokens",
+                "hostPath": "$(sfprefix)tokens$",
+                "readonly": true
             }
         ],
-        "Annotations": {
-            "io.kubernetes.cri.container-type": "sandbox",
-            "io.kubernetes.cri.sandbox-id": "^[a-z0-9]{64}$",
-            "io.kubernetes.cri.sandbox-log-directory": "^/var/log/pods/$(sandbox-namespace)_$(sandbox-name)_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-            "io.katacontainers.pkg.oci.container_type": "pod_sandbox",
-            "io.kubernetes.cri.sandbox-namespace": "default",
-            "io.katacontainers.pkg.oci.bundle_path": "/run/containerd/io.containerd.runtime.v2.task/k8s.io/$(bundle-id)"
-        },
-        "Process": {
-            "Args": [
-                "/pause"
-            ]
-        },
-        "Linux": {
-            "MaskedPaths": [
-                "/proc/acpi",
-                "/proc/asound",
-                "/proc/kcore",
-                "/proc/keys",
-                "/proc/latency_stats",
-                "/proc/timer_list",
-                "/proc/timer_stats",
-                "/proc/sched_debug",
-                "/sys/firmware",
-                "/proc/scsi"
-            ],
-            "ReadonlyPaths": [
-                "/proc/bus",
-                "/proc/fs",
-                "/proc/irq",
-                "/proc/sys",
-                "/proc/sysrq-trigger"
-            ]
-        }
-    },
-    "other_container": {
-        "Root": {
-            "Path": "$(cpath)/$(bundle-id)"
-        },
-        "Mounts": [
-            {
-                "destination": "/etc/hosts",
-                "type_": "bind",
-                "options": [
-                    "rbind",
-                    "rprivate",
-                    "rw"
-                ]
-            },
-            {
-                "destination": "/dev/termination-log",
-                "type_": "bind",
-                "options": [
-                    "rbind",
-                    "rprivate",
-                    "rw"
-                ]
-            },
-            {
-                "destination": "/etc/hostname",
-                "type_": "bind",
-                "options": [
-                    "rbind",
-                    "rprivate"
-                ]
-            },
-            {
-                "destination": "/etc/resolv.conf",
-                "type_": "bind",
-                "options": [
-                    "rbind",
-                    "rprivate"
-                ]
-            },
-            {
-                "destination": "/dev/shm",
-                "type_": "bind",
-                "source": "/run/kata-containers/sandbox/shm",
-                "options": [
-                    "rbind"
-                ]
-            },
-            {
-                "destination": "/var/run/secrets/kubernetes.io/serviceaccount",
-                "type_": "bind",
-                "options": [
-                    "rbind",
-                    "rprivate",
-                    "ro"
-                ]
-            },
-            {
-                "destination": "/var/run/secrets/azure/tokens",
-                "source": "$(sfprefix)tokens$",
-                "type_": "bind",
-                "options": [
-                    "rbind",
-                    "rprivate",
-                    "ro"
-                ]
-            }
-        ],
-        "Annotations": {
-            "io.katacontainers.pkg.oci.bundle_path": "/run/containerd/io.containerd.runtime.v2.task/k8s.io/$(bundle-id)",
-            "io.kubernetes.cri.sandbox-id": "^[a-z0-9]{64}$",
-            "io.katacontainers.pkg.oci.container_type": "pod_container",
-            "io.kubernetes.cri.container-type": "container"
+        "labels": {
+            "io.kubernetes.pod.namespace": "default",
+            "io.kubernetes.pod.uid": "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
         }
     },
     "volumes": {
         "emptyDir": {
-            "mount_type": "local",
-            "mount_source": "^$(cpath)/$(sandbox-id)/local/",
-            "mount_point": "^$(cpath)/$(sandbox-id)/local/",
-            "driver": "local",
-            "source": "local",
-            "fstype": "local",
-            "options": [
-                "mode=0777"
-            ]
+            "hostPath": "^$(cpath)/$(sandbox-id)/local/",
+            "containerPath": "^$(cpath)/$(sandbox-id)/local/"
         },
         "emptyDir_memory": {
-            "mount_type": "bind",
-            "mount_source": "^/run/kata-containers/sandbox/ephemeral/",
-            "mount_point": "^/run/kata-containers/sandbox/ephemeral/",
-            "driver": "ephemeral",
-            "source": "tmpfs",
-            "fstype": "tmpfs",
-            "options": []
+            "hostPath": "^/run/kata-containers/sandbox/ephemeral/",
+            "containerPath": "^/run/kata-containers/sandbox/ephemeral/"
         },
         "configMap": {
-            "mount_type": "bind",
-            "mount_source": "$(sfprefix)",
-            "mount_point": "^$(cpath)/watchable/$(bundle-id)-[a-z0-9]{16}-",
-            "driver": "watchable-bind",
-            "fstype": "bind",
-            "options": [
-                "rbind",
-                "rprivate",
-                "ro"
-            ]
+            "hostPath": "$(sfprefix)",
+            "containerPath": "^$(cpath)/watchable/$(bundle-id)-[a-z0-9]{16}-",
+            "readOnly": true
         },
         "confidential_configMap": {
-            "mount_type": "bind",
-            "mount_source": "$(sfprefix)",
-            "mount_point": "$(sfprefix)",
-            "driver": "local",
-            "fstype": "bind",
-            "options": [
-                "rbind",
-                "rprivate",
-                "ro"
-            ]
+            "hostPath": "$(sfprefix)",
+            "containerPath": "$(sfprefix)",
+            "readOnly": true
         }
     },
     "mount_destinations": [
-        "/sys/fs/cgroup",
         "/etc/hosts",
         "/dev/termination-log",
-        "/etc/hostname",
-        "/etc/resolv.conf",
-        "/dev/shm",
         "/var/run/secrets/kubernetes.io/serviceaccount",
         "/var/run/secrets/azure/tokens"
     ],
-    "sandbox": {
-        "storages": [
-            {
-                "driver": "ephemeral",
-                "driver_options": [],
-                "source": "shm",
-                "fstype": "tmpfs",
-                "options": [
-                    "noexec",
-                    "nosuid",
-                    "nodev",
-                    "mode=1777",
-                    "size=67108864"
-                ],
-                "mount_point": "/run/kata-containers/sandbox/shm",
-                "fs_group": null
-            }
-        ]
-    },
     "common": {
-        "cpath": "/run/kata-containers/shared/containers",
         "sfprefix": "^$(cpath)/$(bundle-id)-[a-z0-9]{16}-",
         "spath": "/run/kata-containers/sandbox/storage",
         "ip_p": "[0-9]{1,5}",
@@ -285,9 +124,6 @@
             "cc-azurefile-csi",
             "cc-azurefile-premium-csi"
         ]
-    },
-    "kata_config": {
-        "confidential_guest": true
     },
     "cluster_config": {
         "default_namespace": "default"

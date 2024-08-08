@@ -330,27 +330,27 @@ fn get_config_map_mount_and_storage(
     yaml_mount: &pod::VolumeMount,
 ) {
     let settings_volumes = &settings.volumes;
-    let settings_config_map = if settings.kata_config.confidential_guest {
-        &settings_volumes.confidential_configMap
-    } else {
-        &settings_volumes.configMap
-    };
+    // let settings_config_map = if settings.kata_config.confidential_guest {
+        // &settings_volumes.confidential_configMap
+    // } else {
+    let settings_config_map = &settings_volumes.configMap;
+    // };
     debug!("Settings configMap: {:?}", settings_config_map);
 
-    if !settings.kata_config.confidential_guest {
-        let mount_path = Path::new(&yaml_mount.mountPath).file_name().unwrap();
-        let mount_path_str = OsString::from(mount_path).into_string().unwrap();
+    // if !settings.kata_config.confidential_guest {
+    let mount_path = Path::new(&yaml_mount.mountPath).file_name().unwrap();
+    let mount_path_str = OsString::from(mount_path).into_string().unwrap();
 
-        storages.push(agent::Storage {
-            driver: settings_config_map.driver.clone(),
-            driver_options: Vec::new(),
-            source: format!("{}{}$", &settings_config_map.mount_source, &yaml_mount.name),
-            fstype: settings_config_map.fstype.clone(),
-            options: settings_config_map.options.clone(),
-            mount_point: format!("{}{mount_path_str}$", &settings_config_map.mount_point),
-            fs_group: None,
-        });
-    }
+    storages.push(agent::Storage {
+        driver: settings_config_map.driver.clone(),
+        driver_options: Vec::new(),
+        source: format!("{}{}$", &settings_config_map.mount_source, &yaml_mount.name),
+        fstype: settings_config_map.fstype.clone(),
+        options: settings_config_map.options.clone(),
+        mount_point: format!("{}{mount_path_str}$", &settings_config_map.mount_point),
+        fs_group: None,
+    });
+    // }
 
     let file_name = Path::new(&yaml_mount.mountPath).file_name().unwrap();
     let name = OsString::from(file_name).into_string().unwrap();

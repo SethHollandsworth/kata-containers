@@ -16,15 +16,16 @@ use std::str;
 /// Policy settings loaded from genpolicy-settings.json.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Settings {
-    pub pause_container: policy::KataSpec,
-    pub other_container: policy::KataSpec,
+    // pub pause_container: policy::KataSpec,
+    // pub other_container: policy::KataSpec,
+    pub container: policy::KataSpec,
     pub volumes: Volumes,
-    pub kata_config: KataConfig,
+    // pub kata_config: KataConfig,
     pub cluster_config: policy::ClusterConfig,
     pub request_defaults: policy::RequestDefaults,
     pub common: policy::CommonData,
     pub mount_destinations: Vec<String>,
-    pub sandbox: policy::SandboxData,
+    // pub sandbox: policy::SandboxData,
 }
 
 /// Volume settings loaded from genpolicy-settings.json.
@@ -39,32 +40,25 @@ pub struct Volumes {
 /// EmptyDir volume settings loaded from genpolicy-settings.json.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EmptyDirVolume {
-    pub mount_type: String,
-    pub mount_source: String,
-    pub mount_point: String,
-    pub driver: String,
-    pub fstype: String,
-    pub options: Vec<String>,
-    pub source: String,
+    pub host_path: String,
+    pub container_path: String,
+    pub readonly: bool,
 }
 
 /// ConfigMap volume settings loaded from genpolicy-settings.json.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfigMapVolume {
-    pub mount_type: String,
-    pub mount_source: String,
-    pub mount_point: String,
-    pub driver: String,
-    pub fstype: String,
-    pub options: Vec<String>,
+    pub host_path: String,
+    pub container_path: String,
+    pub readonly: bool,
 }
 
 /// Data corresponding to the kata runtime config file data, loaded from
 /// genpolicy-settings.json.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct KataConfig {
-    pub confidential_guest: bool,
-}
+// #[derive(Clone, Debug, Serialize, Deserialize)]
+// pub struct KataConfig {
+//     pub confidential_guest: bool,
+// }
 
 impl Settings {
     pub fn new(json_settings_path: &str) -> Self {
@@ -86,6 +80,6 @@ impl Settings {
         // } else {
         //     &self.other_container
         // }
-        &self.other_container
+        &self.container
     }
 }
