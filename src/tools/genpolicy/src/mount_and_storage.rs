@@ -46,22 +46,35 @@ pub fn get_policy_mounts(
             let mut mount = s_mount.clone();
             adjust_termination_path(&mut mount, yaml_container);
 
-            if mount.source.is_empty() && mount.type_.eq("bind") {
-                if let Some(file_name) = Path::new(&mount.destination).file_name() {
+            if mount.hostPath.is_empty() {
+                if let Some(file_name) = Path::new(&mount.containerPath).file_name() {
                     if let Some(file_name) = file_name.to_str() {
-                        mount.source = format!("$(sfprefix){file_name}$");
+                        mount.hostPath = format!("$(sfprefix){file_name}$");
                     }
                 }
             }
 
+            // if mount.source.is_empty() && mount.type_.eq("bind") {
+            //     if let Some(file_name) = Path::new(&mount.destination).file_name() {
+            //         if let Some(file_name) = file_name.to_str() {
+            //             mount.source = format!("$(sfprefix){file_name}$");
+            //         }
+            //     }
+            // }
+
+            let readonly = mount.readonly;
+
             if let Some(policy_mount) = p_mounts
                 .iter_mut()
-                .find(|m| m.destination.eq(&s_mount.destination))
+                .find(|m| m.containerPath.eq(&s_mount.containerPath))
+                // .find(|m| m.destination.eq(&s_mount.destination))
             {
                 // Update an already existing mount.
-                policy_mount.type_ = mount.type_.clone();
-                policy_mount.source = mount.source.clone();
-                policy_mount.options = mount.options.iter().map(String::from).collect();
+                policy_mount.hostPath = mount.hostPath.clone();
+                policy_mount.readonly = readonly;
+                // policy_mount.type_ = mount.type_.clone();
+                // policy_mount.source = mount.source.clone();
+                // policy_mount.options = mount.options.iter().map(String::from).collect();
             } else {
                 // Add a new mount.
                 // if !is_pause_container
@@ -86,7 +99,8 @@ fn keep_settings_mount(
 
     if !keep {
         if let Some(mounts) = yaml_mounts {
-            keep = mounts.iter().any(|m| m.mountPath.eq(&s_mount.destination));
+            // keep = mounts.iter().any(|m| m.mountPath.eq(&s_mount.destination));
+            keep = mounts.iter().any(|m| m.mountPath.eq(&s_mount.containerPath));
         }
     }
 
@@ -96,7 +110,8 @@ fn keep_settings_mount(
 fn adjust_termination_path(mount: &mut policy::KataMount, yaml_container: &pod::Container) {
     if mount.destination == "/dev/termination-log" {
         if let Some(path) = &yaml_container.terminationMessagePath {
-            mount.destination = path.clone();
+            // mount.destination = path.clone();
+            mount.containerPath = path.clone();
         }
     }
 }
@@ -114,11 +129,12 @@ pub fn get_mount_and_storage(
         _ => "rprivate",
     };
 
-    let access = if let Some(true) = yaml_mount.readOnly {
-        "ro"
-    } else {
-        "rw"
-    };
+    let readonly = yaml_mount.readOnly.unwrap_or(false);
+    // let access = if let Some(true) = yaml_mount.readOnly {
+    //     "ro"
+    // } else {
+    //     "rw"
+    // };
 
     let mount_options = (propagation, access);
 
@@ -199,21 +215,24 @@ fn get_empty_dir_mount_and_storage(
         format!("{}{}$", &settings_empty_dir.mount_source, &yaml_mount.name)
     };
 
-    let mount_type = if yaml_mount.subPathExpr.is_some() {
-        "bind"
-    } else {
-        &settings_empty_dir.mount_type
-    };
+    // let mount_type = if yaml_mount.subPathExpr.is_some() {
+    //     "bind"
+    // } else {
+    //     &settings_empty_dir.mount_type
+    // };
 
     p_mounts.push(policy::KataMount {
-        destination: yaml_mount.mountPath.to_string(),
-        type_: mount_type.to_string(),
-        source,
-        options: vec![
-            "rbind".to_string(),
-            "rprivate".to_string(),
-            "rw".to_string(),
-        ],
+        containerPath: yaml_mount.mountPath.to_string(),
+        hostPath: source,
+        readonly: false,
+        // destination: yaml_mount.mountPath.to_string(),
+        // type_: mount_type.to_string(),
+        // source,
+        // options: vec![
+        //     "rbind".to_string(),
+        //     "rprivate".to_string(),
+        //     "rw".to_string(),
+        // ],
     });
 }
 
@@ -473,27 +492,35 @@ pub fn handle_persistent_volume_claim(
         });
 
         let dest = yaml_mount.mountPath.clone();
-        let type_ = "bind".to_string();
-        let (propagation, access) = mount_options;
-        let options = vec![
-            "rbind".to_string(),
-            propagation.to_string(),
-            access.to_string(),
-        ];
+        // let type_ = "bind".to_string();
+        // let (propagation, access) = mount_options;
+        // let options = vec![
+        //     "rbind".to_string(),
+        //     propagation.to_string(),
+        //     access.to_string(),
+        // ];
 
-        if let Some(policy_mount) = p_mounts.iter_mut().find(|m| m.destination == dest) {
+        // if let Some(policy_mount) = p_mounts.iter_mut().find(|m| m.destination == dest) {
+        if let Some(policy_mount) = p_mounts.iter_mut().find(|m| m.containerPath.eq(&dest)) {
             debug!("handle_persistent_volume_claim: updating dest = {dest}, source = {source}");
-            policy_mount.type_ = type_;
-            policy_mount.source = source;
-            policy_mount.options = options;
+            policy_mount.hostPath = source;
+            policy_mount.readonly = readonly;
+            // policy_mount.type_ = type_;
+            // policy_mount.source = source;
+            // policy_mount.options = options;
         } else {
             debug!("handle_persistent_volume_claim: adding dest = {dest}, source = {source}");
             p_mounts.push(policy::KataMount {
-                destination: dest,
-                type_,
-                source,
-                options,
+                containerPath: dest,
+                hostPath: source,
+                readonly,
             });
+            // p_mounts.push(policy::KataMount {
+            //     destination: dest,
+            //     type_,
+            //     source,
+            //     options,
+            // });
         }
     } else {
         get_shared_bind_mount(yaml_mount, p_mounts, mount_options);

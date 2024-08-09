@@ -260,20 +260,30 @@ pub struct KataLinuxCapabilities {
 /// struct generated from oci.proto. The main difference is that it preserves
 /// the field names from oci.proto, for consistency with the structs used by
 /// agent's rpc.rs.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+// pub struct KataMount {
+//     /// destination is the path inside the container expect when it starts with "tmp:/"
+//     pub destination: String,
+
+//     /// source is the path inside the container expect when it starts with "vm:/dev/" or "tmp:/"
+//     /// the path which starts with "vm:/dev/" refers the guest vm's "/dev",
+//     /// especially, "vm:/dev/hostfs/" refers to the shared filesystem.
+//     /// "tmp:/" is a temporary directory which is used for temporary mounts.
+//     #[serde(default)]
+//     pub source: String,
+
+//     pub type_: String,
+//     pub options: Vec<String>,
+// }
 pub struct KataMount {
-    /// destination is the path inside the container expect when it starts with "tmp:/"
-    pub destination: String,
+    // containerPath is the path inside the container.
+    pub containerPath: String,
 
-    /// source is the path inside the container expect when it starts with "vm:/dev/" or "tmp:/"
-    /// the path which starts with "vm:/dev/" refers the guest vm's "/dev",
-    /// especially, "vm:/dev/hostfs/" refers to the shared filesystem.
-    /// "tmp:/" is a temporary directory which is used for temporary mounts.
+    // hostPath is the path on the host machine.
     #[serde(default)]
-    pub source: String,
+    pub hostPath: String,
 
-    pub type_: String,
-    pub options: Vec<String>,
+    pub readonly: Option<bool>,
 }
 
 /// Policy data for a container, included in the output of this app.
