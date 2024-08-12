@@ -7,111 +7,113 @@ use crate::policy;
 use crate::policy::KeyValueEnvVar;
 
 // Default process field from containerd.
-pub fn get_process(privileged_container: bool, common: &policy::CommonData) -> policy::KataProcess {
-    let capabilities = if privileged_container {
-        policy::KataLinuxCapabilities {
-            Ambient: vec![],
-            Bounding: common.privileged_caps.clone(),
-            Effective: common.privileged_caps.clone(),
-            Inheritable: vec![],
-            Permitted: common.privileged_caps.clone(),
-        }
-    } else {
-        policy::KataLinuxCapabilities {
-            Ambient: vec![],
-            Bounding: common.default_caps.clone(),
-            Effective: common.default_caps.clone(),
-            Inheritable: vec![],
-            Permitted: common.default_caps.clone(),
-        }
-    };
+// pub fn get_process(privileged_container: bool, common: &policy::CommonData) -> policy::KataProcess {
+pub fn get_process() -> policy::KataProcess {
+    // pub fn get_process(common: &policy::CommonData) -> policy::KataProcess {
+    // let capabilities = if privileged_container {
+    //     policy::KataLinuxCapabilities {
+    //         ambient: vec![],
+    //         bounding: common.privileged_caps.clone(),
+    //         effective: common.privileged_caps.clone(),
+    //         inheritable: vec![],
+    //         permitted: common.privileged_caps.clone(),
+    //     }
+    // } else {
+    //     policy::KataLinuxCapabilities {
+    //         ambient: vec![],
+    //         bounding: common.default_caps.clone(),
+    //         effective: common.default_caps.clone(),
+    //         inheritable: vec![],
+    //         permitted: common.default_caps.clone(),
+    //     }
+    // };
 
     policy::KataProcess {
-        Terminal: false,
-        User: Default::default(),
-        Args: Vec::new(),
-        // Env: Vec::new(),
+        terminal: false,
+        // user: Default::default(),
+        args: Vec::new(),
+        // env: Vec::new(),
         envs: Vec::new(),
-        Cwd: "/".to_string(),
-        Capabilities: capabilities,
-        NoNewPrivileges: false,
+        cwd: "/".to_string(),
+        // capabilities: capabilities,
+        no_new_privileges: false,
     }
 }
 
 // Default mounts field from containerd.
 // pub fn get_mounts(is_pause_container: bool, privileged_container: bool) -> Vec<policy::KataMount> {
-pub fn get_mounts(privileged_container: bool) -> Vec<policy::KataMount> {
-    let sysfs_read_write_option = if privileged_container { "rw" } else { "ro" };
+// pub fn get_mounts(_privileged_container: bool) -> Vec<policy::KataMount> {
+    // let sysfs_read_write_option = if privileged_container { "rw" } else { "ro" };
 
-    let mut mounts = vec![
-        policy::KataMount {
-            destination: "/proc".to_string(),
-            type_: "proc".to_string(),
-            source: "proc".to_string(),
-            options: vec![
-                "nosuid".to_string(),
-                "noexec".to_string(),
-                "nodev".to_string(),
-            ],
-        },
-        policy::KataMount {
-            destination: "/dev".to_string(),
-            type_: "tmpfs".to_string(),
-            source: "tmpfs".to_string(),
-            options: vec![
-                "nosuid".to_string(),
-                "strictatime".to_string(),
-                "mode=755".to_string(),
-                "size=65536k".to_string(),
-            ],
-        },
-        policy::KataMount {
-            destination: "/dev/pts".to_string(),
-            type_: "devpts".to_string(),
-            source: "devpts".to_string(),
-            options: vec![
-                "nosuid".to_string(),
-                "noexec".to_string(),
-                "newinstance".to_string(),
-                "ptmxmode=0666".to_string(),
-                "mode=0620".to_string(),
-                "gid=5".to_string(),
-            ],
-        },
-        policy::KataMount {
-            destination: "/dev/shm".to_string(),
-            type_: "tmpfs".to_string(),
-            source: "shm".to_string(),
-            options: vec![
-                "nosuid".to_string(),
-                "noexec".to_string(),
-                "nodev".to_string(),
-                "mode=1777".to_string(),
-                "size=65536k".to_string(),
-            ],
-        },
-        policy::KataMount {
-            destination: "/dev/mqueue".to_string(),
-            type_: "mqueue".to_string(),
-            source: "mqueue".to_string(),
-            options: vec![
-                "nosuid".to_string(),
-                "noexec".to_string(),
-                "nodev".to_string(),
-            ],
-        },
-        policy::KataMount {
-            destination: "/sys".to_string(),
-            type_: "sysfs".to_string(),
-            source: "sysfs".to_string(),
-            options: vec![
-                "nosuid".to_string(),
-                "noexec".to_string(),
-                "nodev".to_string(),
-                sysfs_read_write_option.to_string(),
-            ],
-        },
-    ];
+    // let mounts = vec![
+        // policy::KataMount {
+        //     containerPath: "/proc".to_string(),
+        //     type_: "proc".to_string(),
+        //     source: "proc".to_string(),
+        //     options: vec![
+        //         "nosuid".to_string(),
+        //         "noexec".to_string(),
+        //         "nodev".to_string(),
+        //     ],
+        // },
+        // policy::KataMount {
+        //     containerPath: "/dev".to_string(),
+        //     type_: "tmpfs".to_string(),
+        //     source: "tmpfs".to_string(),
+        //     options: vec![
+        //         "nosuid".to_string(),
+        //         "strictatime".to_string(),
+        //         "mode=755".to_string(),
+        //         "size=65536k".to_string(),
+        //     ],
+        // },
+        // policy::KataMount {
+        //     destination: "/dev/pts".to_string(),
+        //     type_: "devpts".to_string(),
+        //     source: "devpts".to_string(),
+        //     options: vec![
+        //         "nosuid".to_string(),
+        //         "noexec".to_string(),
+        //         "newinstance".to_string(),
+        //         "ptmxmode=0666".to_string(),
+        //         "mode=0620".to_string(),
+        //         "gid=5".to_string(),
+        //     ],
+        // },
+        // policy::KataMount {
+        //     destination: "/dev/shm".to_string(),
+        //     type_: "tmpfs".to_string(),
+        //     source: "shm".to_string(),
+        //     options: vec![
+        //         "nosuid".to_string(),
+        //         "noexec".to_string(),
+        //         "nodev".to_string(),
+        //         "mode=1777".to_string(),
+        //         "size=65536k".to_string(),
+        //     ],
+        // },
+        // policy::KataMount {
+        //     destination: "/dev/mqueue".to_string(),
+        //     type_: "mqueue".to_string(),
+        //     source: "mqueue".to_string(),
+        //     options: vec![
+        //         "nosuid".to_string(),
+        //         "noexec".to_string(),
+        //         "nodev".to_string(),
+        //     ],
+        // },
+        // policy::KataMount {
+        //     destination: "/sys".to_string(),
+        //     type_: "sysfs".to_string(),
+        //     source: "sysfs".to_string(),
+        //     options: vec![
+        //         "nosuid".to_string(),
+        //         "noexec".to_string(),
+        //         "nodev".to_string(),
+        //         sysfs_read_write_option.to_string(),
+        //     ],
+        // },
+    // ];
 
     // if !is_pause_container {
     //     mounts.push(policy::KataMount {
@@ -128,31 +130,31 @@ pub fn get_mounts(privileged_container: bool) -> Vec<policy::KataMount> {
     //     });
     // }
 
-    mounts.push(policy::KataMount {
-        destination: "/sys/fs/cgroup".to_string(),
-        type_: "cgroup".to_string(),
-        source: "cgroup".to_string(),
-        options: vec![
-            "nosuid".to_string(),
-            "noexec".to_string(),
-            "nodev".to_string(),
-            "relatime".to_string(),
-            sysfs_read_write_option.to_string(),
-        ],
-    });
+    // mounts.push(policy::KataMount {
+    //     destination: "/sys/fs/cgroup".to_string(),
+    //     type_: "cgroup".to_string(),
+    //     source: "cgroup".to_string(),
+    //     options: vec![
+    //         "nosuid".to_string(),
+    //         "noexec".to_string(),
+    //         "nodev".to_string(),
+    //         "relatime".to_string(),
+    //         sysfs_read_write_option.to_string(),
+    //     ],
+    // });
 
-    mounts
-}
+    // mounts
+// }
 
 // Default policy::KataLinux field from containerd.
 pub fn get_linux(privileged_container: bool) -> policy::KataLinux {
     if !privileged_container {
         policy::KataLinux {
-            SecurityContext: policy::SecurityContext {
-                RunAsGroup: 0,
-                RunAsUser: 0,
-                RunAsNonRoot: true,
-                MaskedPaths: vec![
+            security_context: policy::SecurityContext {
+                run_as_group: 0,
+                run_as_user: 0,
+                run_as_nonroot: true,
+                masked_paths: vec![
                     "/proc/asound".to_string(),
                     "/proc/acpi".to_string(),
                     "/proc/kcore".to_string(),
@@ -164,7 +166,7 @@ pub fn get_linux(privileged_container: bool) -> policy::KataLinux {
                     "/proc/scsi".to_string(),
                     "/sys/firmware".to_string(),
                 ],
-                ReadonlyPaths: vec![
+                readonly_paths: vec![
                     "/proc/bus".to_string(),
                     "/proc/fs".to_string(),
                     "/proc/irq".to_string(),
@@ -172,18 +174,18 @@ pub fn get_linux(privileged_container: bool) -> policy::KataLinux {
                     "/proc/sysrq-trigger".to_string(),
                 ],
             },
-            Namespaces: vec![],
+            // namespaces: vec![],
         }
     } else {
         policy::KataLinux {
-            SecurityContext: policy::SecurityContext {
-                MaskedPaths: vec![],
-                ReadonlyPaths: vec![],
-                RunAsGroup: 0,
-                RunAsUser: 0,
-                RunAsNonRoot: true,
+            security_context: policy::SecurityContext {
+                masked_paths: vec![],
+                readonly_paths: vec![],
+                run_as_group: 0,
+                run_as_user: 0,
+                run_as_nonroot: true,
             },
-            Namespaces: vec![],
+            // namespaces: vec![],
         }
     }
 }

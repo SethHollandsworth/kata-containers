@@ -238,7 +238,7 @@ impl StatefulSet {
                             "rw"
                         };
 
-                        let mount_options = (propagation, access);
+                        let mount_options = (propagation, access == "ro");
                         mount_and_storage::handle_persistent_volume_claim(
                             is_blk_mount,
                             is_smb_mount,

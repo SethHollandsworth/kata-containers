@@ -562,14 +562,14 @@ allow_by_bundle_or_sandbox_id(p_oci, i_oci, p_storages, i_storages) if {
 # SETH: I don't see process, but I do see command
 allow_process(p_config, i_config, s_name) if {
 
-   #  print("allow_process: i terminal =", i_process.Terminal, "p terminal =", p_process.Terminal)
-    # p_process.Terminal == i_process.Terminal
+   #  print("allow_process: i terminal =", i_process.terminal, "p terminal =", p_process.terminal)
+    # p_process.terminal == i_process.terminal
 
     # print("allow_process: i cwd =", i_process.Cwd, "i cwd =", p_process.Cwd)
     # p_process.Cwd == i_process.Cwd
 
-    # print("allow_process: i noNewPrivileges =", i_process.NoNewPrivileges, "p noNewPrivileges =", p_process.NoNewPrivileges)
-    # p_process.NoNewPrivileges == i_process.NoNewPrivileges
+    # print("allow_process: i noNewPrivileges =", i_process.no_new_privileges, "p noNewPrivileges =", p_process.no_new_privileges)
+    # p_process.no_new_privileges == i_process.no_new_privileges
 
     # SETH: all of these are used in the CRI spec, caps and user are in securityContext
     # TODO SETH: args and env should be done, caps and user are still tbd
@@ -584,8 +584,8 @@ allow_process(p_config, i_config, s_name) if {
 # SETH: I see runAsUser for the container, not for a process
 
 allow_user(p_config, i_config) if {
-    p_user := p_config.User
-    i_user := i_config.User
+    p_user := p_config.user
+    i_user := i_config.user
 
    #  print("allow_user: input uid =", i_user.UID, "policy uid =", p_user.UID)
     p_user.UID == i_user.UID
@@ -1188,25 +1188,25 @@ allow_storage_options(p_storage, i_storage, _, _) if {
 
 # process.Capabilities
 allow_caps(p_caps, i_caps) if {
-   #  print("allow_caps: policy Ambient =", p_caps.Ambient)
-   #  print("allow_caps: input Ambient =", i_caps.Ambient)
-    match_caps(p_caps.Ambient, i_caps.Ambient)
+   #  print("allow_caps: policy ambient =", p_caps.ambient)
+   #  print("allow_caps: input ambient =", i_caps.ambient)
+    match_caps(p_caps.ambient, i_caps.ambient)
 
-   #  print("allow_caps: policy Bounding =", p_caps.Bounding)
-   #  print("allow_caps: input Bounding =", i_caps.Bounding)
-    match_caps(p_caps.Bounding, i_caps.Bounding)
+   #  print("allow_caps: policy bounding =", p_caps.bounding)
+   #  print("allow_caps: input bounding =", i_caps.bounding)
+    match_caps(p_caps.bounding, i_caps.bounding)
 
-   #  print("allow_caps: policy Effective =", p_caps.Effective)
-   #  print("allow_caps: input Effective =", i_caps.Effective)
-    match_caps(p_caps.Effective, i_caps.Effective)
+   #  print("allow_caps: policy effective =", p_caps.effective)
+   #  print("allow_caps: input effective =", i_caps.effective)
+    match_caps(p_caps.effective, i_caps.effective)
 
-   #  print("allow_caps: policy Inheritable =", p_caps.Inheritable)
-   #  print("allow_caps: input Inheritable =", i_caps.Inheritable)
-    match_caps(p_caps.Inheritable, i_caps.Inheritable)
+   #  print("allow_caps: policy inheritable =", p_caps.inheritable)
+   #  print("allow_caps: input inheritable =", i_caps.inheritable)
+    match_caps(p_caps.inheritable, i_caps.inheritable)
 
-   #  print("allow_caps: policy Permitted =", p_caps.Permitted)
-   #  print("allow_caps: input Permitted =", i_caps.Permitted)
-    match_caps(p_caps.Permitted, i_caps.Permitted)
+   #  print("allow_caps: policy permitted =", p_caps.permitted)
+   #  print("allow_caps: input permitted =", i_caps.permitted)
+    match_caps(p_caps.permitted, i_caps.permitted)
 }
 
 match_caps(p_caps, i_caps) if {

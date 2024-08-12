@@ -136,36 +136,36 @@ impl Container {
         debug!("Getting process field from docker config layer...");
         let docker_config = &self.config_layer.config;
 
-        if let Some(image_user) = &docker_config.User {
-            if !image_user.is_empty() {
-                debug!("Splitting Docker config user = {:?}", image_user);
-                let user: Vec<&str> = image_user.split(':').collect();
-                if !user.is_empty() {
-                    debug!("Parsing uid from user[0] = {}", &user[0]);
-                    match user[0].parse() {
-                        Ok(id) => process.User.UID = id,
-                        Err(e) => {
-                            // "image: prom/prometheus" has user = "nobody", but
-                            // process.User.UID is an u32 value.
-                            warn!(
-                                "Failed to parse {} as u32, using uid = 0 - error {e}",
-                                &user[0]
-                            );
-                            process.User.UID = 0;
-                        }
-                    }
-                }
-                if user.len() > 1 {
-                    debug!("Parsing gid from user[1] = {:?}", user[1]);
-                    process.User.GID = user[1].parse().unwrap();
-                }
-            }
-        }
+        // if let Some(image_user) = &docker_config.User {
+        //     if !image_user.is_empty() {
+        //         debug!("Splitting Docker config user = {:?}", image_user);
+        //         let user: Vec<&str> = image_user.split(':').collect();
+        //         if !user.is_empty() {
+        //             debug!("Parsing uid from user[0] = {}", &user[0]);
+        //             match user[0].parse() {
+        //                 Ok(id) => process.user.UID = id,
+        //                 Err(e) => {
+        //                     // "image: prom/prometheus" has user = "nobody", but
+        //                     // process.user.UID is an u32 value.
+        //                     warn!(
+        //                         "Failed to parse {} as u32, using uid = 0 - error {e}",
+        //                         &user[0]
+        //                     );
+        //                     process.user.UID = 0;
+        //                 }
+        //             }
+        //         }
+        //         if user.len() > 1 {
+        //             debug!("Parsing gid from user[1] = {:?}", user[1]);
+        //             process.user.GID = user[1].parse().unwrap();
+        //         }
+        //     }
+        // }
 
         if let Some(terminal) = docker_config.Tty {
-            process.Terminal = terminal;
+            process.terminal = terminal;
         } else {
-            process.Terminal = false;
+            process.terminal = false;
         }
 
         // assert!(process.Env.is_empty());
@@ -186,7 +186,7 @@ impl Container {
             containerd::get_default_unix_env(&mut process.envs);
         }
 
-        let policy_args = &mut process.Args;
+        let policy_args = &mut process.args;
         debug!("Already existing policy args: {:?}", policy_args);
 
         if let Some(entry_points) = &docker_config.Entrypoint {
@@ -227,7 +227,7 @@ impl Container {
 
         if let Some(working_dir) = &docker_config.WorkingDir {
             if !working_dir.is_empty() {
-                process.Cwd = working_dir.clone();
+                process.cwd = working_dir.clone();
             }
         }
 

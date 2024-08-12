@@ -40,16 +40,27 @@ pub struct Volumes {
 /// EmptyDir volume settings loaded from genpolicy-settings.json.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EmptyDirVolume {
+    #[serde(rename = "hostPath")]
     pub host_path: String,
+    #[serde(rename = "containerPath")]
     pub container_path: String,
+    #[serde(default = "default_readonly")]
     pub readonly: bool,
+}
+
+
+fn default_readonly() -> bool {
+    false
 }
 
 /// ConfigMap volume settings loaded from genpolicy-settings.json.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfigMapVolume {
+    #[serde(rename = "hostPath")]
     pub host_path: String,
+    #[serde(rename = "containerPath")]
     pub container_path: String,
+    #[serde(default = "default_readonly")]
     pub readonly: bool,
 }
 
@@ -65,6 +76,7 @@ impl Settings {
         debug!("Loading settings file...");
         if let Ok(file) = File::open(json_settings_path) {
             let settings: Self = serde_json::from_reader(file).unwrap();
+            println!("settings = {:?}", &settings);
             debug!("settings = {:?}", &settings);
             settings
         } else {

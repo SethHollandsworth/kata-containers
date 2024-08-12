@@ -13,7 +13,7 @@ use crate::mount_and_storage;
 use crate::pod;
 use crate::policy;
 use crate::pvc;
-use crate::registry;
+// use crate::registry;
 use crate::secret;
 use crate::settings;
 use crate::utils;
@@ -25,7 +25,7 @@ use base64::{engine::general_purpose, Engine as _};
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_yaml::Value;
-use sha2::{Digest, Sha256};
+// use sha2::{Digest, Sha256};
 use std::boxed;
 use std::collections::BTreeMap;
 use std::fs::read_to_string;
@@ -77,7 +77,7 @@ pub struct PolicyData {
 }
 
 /// OCI Container spec. This struct is very similar to the Spec struct from
-/// Kata Containers. The main difference is that the Annotations field below
+/// Kata Containers. The main difference is that the annotations field below
 /// is ordered, thus resulting in the same output policy contents every time
 /// when this apps runs with the same inputs. Also, it preserves the upper
 /// case field names, for consistency with the structs used by agent's rpc.rs.
@@ -85,30 +85,30 @@ pub struct PolicyData {
 pub struct KataSpec {
     /// Version of the Open Container Initiative Runtime Specification with which the bundle complies.
     #[serde(default = "version_default")]
-    pub Version: String,
+    pub version: String,
 
     /// Process configures the container process.
     #[serde(default)]
-    pub Process: KataProcess,
+    pub process: KataProcess,
 
     /// Root configures the container's root filesystem.
-    pub Root: KataRoot,
+    // pub root: KataRoot,
 
     /// Mounts configures additional mounts (on top of Root).
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub Mounts: Vec<KataMount>,
+    pub mounts: Vec<KataMount>,
 
     /// Hooks configures callbacks for container lifecycle events.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub Hooks: Option<oci::Hooks>,
+    pub hooks: Option<oci::Hooks>,
 
-    /// Annotations contains arbitrary metadata for the container.
+    /// annotations contains arbitrary metadata for the container.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub Annotations: BTreeMap<String, String>,
+    pub labels: BTreeMap<String, String>,
 
     /// Linux is platform-specific configuration for Linux based containers.
     #[serde(default)]
-    pub Linux: KataLinux,
+    pub linux: KataLinux,
 }
 
 fn version_default() -> String {
@@ -127,21 +127,21 @@ pub struct KeyValueEnvVar {
 /// used by agent's rpc.rs.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct KataProcess {
-    /// Terminal creates an interactive terminal for the container.
+    /// terminal creates an interactive terminal for the container.
     #[serde(default)]
-    pub Terminal: bool,
+    pub terminal: bool,
 
     /// User specifies user information for the process.
-    #[serde(default)]
-    pub User: KataUser,
+    // #[serde(default)]
+    // pub user: KataUser,
 
     /// Args specifies the binary and arguments for the application to execute.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub Args: Vec<String>,
+    pub args: Vec<String>,
 
     /// Env populates the process environment for the process.
     // #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    // pub Env: Vec<String>,
+    // pub env: Vec<String>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub envs: Vec<KeyValueEnvVar>,  // New field for key-value pairs
@@ -149,15 +149,15 @@ pub struct KataProcess {
     /// Cwd is the current working directory for the process and must be
     /// relative to the container's root.
     #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub Cwd: String,
+    pub cwd: String,
 
     /// Capabilities are Linux capabilities that are kept for the process.
-    #[serde(default)]
-    pub Capabilities: KataLinuxCapabilities,
+    // #[serde(default)]
+    // pub capabilities: KataLinuxCapabilities,
 
     /// NoNewPrivileges controls whether additional privileges could be gained by processes in the container.
     #[serde(default)]
-    pub NoNewPrivileges: bool,
+    pub no_new_privileges: bool,
 }
 
 // impl KataProcess {
@@ -176,34 +176,34 @@ pub struct KataProcess {
 /// struct generated from oci.proto. The main difference is that it preserves
 /// the upper case field names from oci.proto, for consistency with the structs
 /// used by agent's rpc.rs.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub struct KataUser {
-    /// UID is the user id.
-    pub UID: u32,
+// #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+// pub struct KataUser {
+//     /// UID is the user id.
+//     pub UID: u32,
 
-    /// GID is the group id.
-    pub GID: u32,
+//     /// GID is the group id.
+//     pub GID: u32,
 
-    /// AdditionalGids are additional group ids set for the container's process.
-    pub AdditionalGids: Vec<u32>,
+//     /// additional_gids are additional group ids set for the container's process.
+//     pub additional_gids: Vec<u32>,
 
-    /// Username is the user name.
-    pub Username: String,
-}
+//     /// Username is the user name.
+//     pub username: String,
+// }
 
 /// OCI container Root struct. This struct is very similar to the Root
 /// struct generated from oci.proto. The main difference is that it preserves the
 /// upper case field names from oci.proto, for consistency with the structs used
 /// by agent's rpc.rs.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct KataRoot {
-    /// Path is the absolute path to the container's root filesystem.
-    pub Path: String,
+// #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+// pub struct KataRoot {
+//     /// Path is the absolute path to the container's root filesystem.
+//     pub Path: String,
 
-    /// Readonly makes the root filesystem for the container readonly before the process is executed.
-    #[serde(default)]
-    pub Readonly: bool,
-}
+//     /// Readonly makes the root filesystem for the container readonly before the process is executed.
+//     #[serde(default)]
+//     pub Readonly: bool,
+// }
 
 /// OCI container Linux struct. This struct is similar to the Linux struct
 /// generated from oci.proto, but includes just the fields that are currently
@@ -211,30 +211,30 @@ pub struct KataRoot {
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct KataLinux {
     /// Namespaces contains the namespaces that are created and/or joined by the container
-    #[serde(default)]
-    pub Namespaces: Vec<KataLinuxNamespace>,
+    // #[serde(default)]
+    // pub namespaces: Vec<KataLinuxNamespace>,
 
     /// SecurityContext holds container security settings.
-    pub SecurityContext: SecurityContext,
+    pub security_context: SecurityContext,
 }
 
 /// CRI Container securityContext struct.
 #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
 pub struct SecurityContext {
     /// MaskedPaths masks over the provided paths inside the container.
-    pub MaskedPaths: Vec<String>,
+    pub masked_paths: Vec<String>,
 
     /// ReadonlyPaths sets the provided paths as RO inside the container.
-    pub ReadonlyPaths: Vec<String>,
+    pub readonly_paths: Vec<String>,
 
     /// RunAsGroup is the primary group of the container process.
-    pub RunAsGroup: i64,
+    pub run_as_group: i64,
 
     /// RunAsNonRoot indicates that the container must run as a non-root user.
-    pub RunAsNonRoot: bool,
+    pub run_as_nonroot: bool,
 
     /// RunAsUser is the UID of the container process.
-    pub RunAsUser: i64,
+    pub run_as_user: i64,
 }
 
 
@@ -244,34 +244,34 @@ pub struct SecurityContext {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct KataLinuxNamespace {
     /// Type is the type of namespace
-    pub Type: String,
+    pub namespace_type: String,
 
     /// Path is a path to an existing namespace persisted on disk that can be joined
     /// and is of the same type
-    pub Path: String,
+    pub path: String,
 }
 
 /// OCI container LinuxCapabilities struct. This struct is very similar to the
 /// LinuxCapabilities struct generated from oci.proto. The main difference is
 /// that it preserves the upper case field names from oci.proto, for consistency
 /// with the structs used by agent's rpc.rs.
-#[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
-pub struct KataLinuxCapabilities {
-    // Ambient is the ambient set of capabilities that are kept.
-    pub Ambient: Vec<String>,
+// #[derive(Serialize, Deserialize, Debug, Default, Clone, PartialEq)]
+// pub struct KataLinuxCapabilities {
+//     // ambient is the ambient set of capabilities that are kept.
+//     pub ambient: Vec<String>,
 
-    /// Bounding is the set of capabilities checked by the kernel.
-    pub Bounding: Vec<String>,
+//     /// bounding is the set of capabilities checked by the kernel.
+//     pub bounding: Vec<String>,
 
-    /// Effective is the set of capabilities checked by the kernel.
-    pub Effective: Vec<String>,
+//     /// effective is the set of capabilities checked by the kernel.
+//     pub effective: Vec<String>,
 
-    /// Inheritable is the capabilities preserved across execve.
-    pub Inheritable: Vec<String>,
+//     /// inheritable is the capabilities preserved across execve.
+//     pub inheritable: Vec<String>,
 
-    /// Permitted is the limiting superset for effective capabilities.
-    pub Permitted: Vec<String>,
-}
+//     /// permitted is the limiting superset for effective capabilities.
+//     pub permitted: Vec<String>,
+// }
 
 /// OCI container Mount struct. This struct is very similar to the Mount
 /// struct generated from oci.proto. The main difference is that it preserves
@@ -292,6 +292,13 @@ pub struct KataLinuxCapabilities {
 //     pub type_: String,
 //     pub options: Vec<String>,
 // }
+
+
+fn default_readonly() -> Option<bool> {
+    Some(false)
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct KataMount {
     // containerPath is the path inside the container.
     pub containerPath: String,
@@ -300,6 +307,7 @@ pub struct KataMount {
     #[serde(default)]
     pub hostPath: String,
 
+    #[serde(default = "default_readonly")]
     pub readonly: Option<bool>,
 }
 
@@ -307,7 +315,7 @@ pub struct KataMount {
 #[derive(Debug, Serialize)]
 pub struct ContainerPolicy {
     /// Data compared with req.OCI for CreateContainerRequest calls.
-    pub OCI: KataSpec,
+    pub spec: KataSpec,
 
     /// Data compared with req.storages for CreateContainerRequest calls.
     storages: Vec<agent::Storage>,
@@ -315,7 +323,7 @@ pub struct ContainerPolicy {
     /// Data compared with req.sandbox_pidns for CreateContainerRequest calls.
     sandbox_pidns: bool,
 
-    /// Allow list of ommand lines that are allowed to be executed using
+    /// Allow list of command lines that are allowed to be executed using
     /// ExecProcessRequest. By default, all ExecProcessRequest calls are blocked
     /// by the policy.
     exec_commands: Vec<String>,
@@ -397,13 +405,16 @@ pub struct RequestDefaults {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CommonData {
     /// Path to the shared container files - e.g., "/run/kata-containers/shared/containers".
-    pub cpath: String,
+    // pub cpath: String,
 
     /// Regex prefix for shared file paths - e.g., "^$(cpath)/$(bundle-id)-[a-z0-9]{16}-".
     pub sfprefix: String,
 
     /// Path to the shared sandbox storage - e.g., "/run/kata-containers/sandbox/storage".
     pub spath: String,
+
+    /// Possible value for a UID
+    pub uid: String,
 
     /// Regex for an IPv4 address.
     pub ipv4_a: String,
@@ -426,7 +437,7 @@ pub struct CommonData {
     /// Storage classes which mounts should be handled as virtio-blk devices.
     pub virtio_blk_storage_classes: Vec<String>,
 
-    /// Storage classes which mounts should be handled as smb mounts
+    // /// Storage classes which mounts should be handled as smb mounts
     pub smb_storage_classes: Vec<String>,
 }
 
@@ -573,8 +584,8 @@ impl AgentPolicy {
         // is_pause_container: bool,
     ) -> ContainerPolicy {
         let c_settings = self.settings.get_container_settings();
-        let mut root = c_settings.Root.clone();
-        root.Readonly = yaml_container.read_only_root_filesystem();
+        // let mut root = c_settings.Root.clone();
+        // root.Readonly = yaml_container.read_only_root_filesystem();
 
         let namespace = if let Some(ns) = resource.get_namespace() {
             ns
@@ -582,7 +593,7 @@ impl AgentPolicy {
             self.settings.cluster_config.default_namespace.clone()
         };
 
-        let use_host_network = resource.use_host_network();
+        // let use_host_network = resource.use_host_network();
         let annotations = get_container_annotations(
             resource,
             yaml_container,
@@ -603,7 +614,9 @@ impl AgentPolicy {
         );
 
         // let mut mounts = containerd::get_mounts(is_pause_container, is_privileged);
-        let mut mounts = containerd::get_mounts(is_privileged);
+        // let mut mounts = containerd::get_mounts(is_privileged);
+        // let mut mounts = Default::default();
+        let mut mounts = vec![];
         mount_and_storage::get_policy_mounts(
             &self.settings,
             &mut mounts,
@@ -611,9 +624,9 @@ impl AgentPolicy {
             // is_pause_container,
         );
 
-        let image_layers = yaml_container.registry.get_image_layers();
+        let _image_layers = yaml_container.registry.get_image_layers();
         let mut storages = Default::default();
-        get_image_layer_storages(&mut storages, &image_layers, &root);
+        // get_image_layer_storages(&mut storages, &image_layers, &root);
         resource.get_container_mounts_and_storages(
             &mut mounts,
             &mut storages,
@@ -624,13 +637,13 @@ impl AgentPolicy {
 
         let mut linux = containerd::get_linux(is_privileged);
         // linux.Namespaces = get_kata_namespaces(is_pause_container, use_host_network);
-        linux.Namespaces = get_kata_namespaces(use_host_network);
+        // linux.namespaces = get_kata_namespaces(use_host_network);
 
-        if !c_settings.Linux.SecurityContext.MaskedPaths.is_empty() {
-            linux.SecurityContext.MaskedPaths = c_settings.Linux.SecurityContext.MaskedPaths.clone();
+        if !c_settings.linux.security_context.masked_paths.is_empty() {
+            linux.security_context.masked_paths = c_settings.linux.security_context.masked_paths.clone();
         }
-        if !c_settings.Linux.SecurityContext.ReadonlyPaths.is_empty() {
-            linux.SecurityContext.ReadonlyPaths = c_settings.Linux.SecurityContext.ReadonlyPaths.clone();
+        if !c_settings.linux.security_context.readonly_paths.is_empty() {
+            linux.security_context.readonly_paths = c_settings.linux.security_context.readonly_paths.clone();
         }
 
         // let sandbox_pidns = if is_pause_container {
@@ -643,14 +656,14 @@ impl AgentPolicy {
         let exec_commands = yaml_container.get_exec_commands();
 
         ContainerPolicy {
-            OCI: KataSpec {
-                Version: version_default(),
-                Process: process,
-                Root: root,
-                Mounts: mounts,
-                Hooks: None,
-                Annotations: annotations,
-                Linux: linux,
+            spec: KataSpec {
+                version: version_default(),
+                process: process,
+                // root: root,
+                mounts: mounts,
+                hooks: None,
+                labels: annotations,
+                linux: linux,
             },
             storages,
             sandbox_pidns,
@@ -665,21 +678,22 @@ impl AgentPolicy {
         // is_pause_container: bool,
         namespace: &str,
         c_settings: &KataSpec,
-        is_privileged: bool,
+        _is_privileged: bool,
     ) -> KataProcess {
         // Start with the Default Unix Spec from
         // https://github.com/containerd/containerd/blob/release/1.6/oci/spec.go#L132
-        let mut process = containerd::get_process(is_privileged, &self.settings.common);
+        // let mut process = containerd::get_process(is_privileged, &self.settings.common);
+        let mut process = containerd::get_process();
 
-        yaml_container.apply_capabilities(&mut process.Capabilities, &self.settings.common);
+        // yaml_container.apply_capabilities(&mut process.capabilities, &self.settings.common);
 
-        let (yaml_has_command, yaml_has_args) = yaml_container.get_process_args(&mut process.Args);
+        let (yaml_has_command, yaml_has_args) = yaml_container.get_process_args(&mut process.args);
         yaml_container
             .registry
             .get_process(&mut process, yaml_has_command, yaml_has_args);
 
         if let Some(tty) = yaml_container.tty {
-            process.Terminal = tty;
+            process.terminal = tty;
             // if tty && !is_pause_container {
             if tty {
                 process.envs.push(KeyValueEnvVar {
@@ -715,108 +729,109 @@ impl AgentPolicy {
         );
 
         // substitute_env_variables(&mut process.Env);
-        // substitute_args_env_variables(&mut process.Args, &process.Env);
+        // substitute_args_env_variables(&mut process.args, &process.Env);
         substitute_env_variables(&mut process.envs);
-        substitute_args_env_variables(&mut process.Args, &process.envs);
+        substitute_args_env_variables(&mut process.args, &process.envs);
 
         c_settings.get_process_fields(&mut process);
-        resource.get_process_fields(&mut process);
-        yaml_container.get_process_fields(&mut process);
+        // resource.get_process_fields(&mut process);
+        // yaml_container.get_process_fields(&mut process);
 
         process
     }
 }
 
 impl KataSpec {
-    fn add_annotations(&self, annotations: &mut BTreeMap<String, String>) {
-        for a in &self.Annotations {
-            annotations.entry(a.0.clone()).or_insert(a.1.clone());
+    fn add_labels(&self, labels: &mut BTreeMap<String, String>) {
+        for a in &self.labels {
+            labels.entry(a.0.clone()).or_insert(a.1.clone());
         }
     }
 
     fn get_process_fields(&self, process: &mut KataProcess) {
-        if process.User.UID == 0 {
-            process.User.UID = self.Process.User.UID;
-        }
-        if process.User.GID == 0 {
-            process.User.GID = self.Process.User.GID;
-        }
+        // if process.user.UID == 0 {
+            // process.user.UID = self.linux.security_context.run_as_user;
+        // }
+        // if process.user.GID == 0 {
+            // process.user.GID = self.linux.security_context.run_as_group;
+        // }
 
-        process.User.AdditionalGids = self.Process.User.AdditionalGids.to_vec();
-        process.User.Username = String::from(&self.Process.User.Username);
-        add_missing_strings(&self.Process.Args, &mut process.Args);
+        // process.user.additional_gids = self.process.user.additional_gids.to_vec();
+        // process.user.username = String::from(&self.process.user.username);
+        add_missing_strings(&self.process.args, &mut process.args);
 
-        // add_missing_strings(&self.Process.Env, &mut process.Env);
-        add_missing_env_vars(&self.Process.envs, &mut process.envs);
+        // add_missing_strings(&self.process.Env, &mut process.Env);
+        add_missing_env_vars(&self.process.envs, &mut process.envs);
     }
 }
 
-fn get_image_layer_storages(
-    storages: &mut Vec<agent::Storage>,
-    image_layers: &Vec<registry::ImageLayer>,
-    root: &KataRoot,
-) {
-    let mut new_storages: Vec<agent::Storage> = Vec::new();
-    let mut layer_names: Vec<String> = Vec::new();
-    // Remove the layer_hashes related code
-    // let mut layer_hashes: Vec<String> = Vec::new();
-    let mut previous_chain_id = String::new();
-    let layers_count = image_layers.len();
-    let mut layer_index = layers_count;
+// TODO SETH: can we get rid of this function?
+// fn get_image_layer_storages(
+//     storages: &mut Vec<agent::Storage>,
+//     image_layers: &Vec<registry::ImageLayer>,
+//     // root: &KataRoot,
+// ) {
+//     let mut new_storages: Vec<agent::Storage> = Vec::new();
+//     let mut layer_names: Vec<String> = Vec::new();
+//     // Remove the layer_hashes related code
+//     // let mut layer_hashes: Vec<String> = Vec::new();
+//     let mut previous_chain_id = String::new();
+//     let layers_count = image_layers.len();
+//     let mut layer_index = layers_count;
 
-    for layer in image_layers {
-        // See https://github.com/opencontainers/image-spec/blob/main/config.md#layer-chainid
-        let chain_id = if previous_chain_id.is_empty() {
-            layer.diff_id.clone()
-        } else {
-            let mut hasher = Sha256::new();
-            hasher.update(format!("{previous_chain_id} {}", &layer.diff_id));
-            format!("sha256:{:x}", hasher.finalize())
-        };
-        debug!(
-            "previous_chain_id = {}, chain_id = {}",
-            &previous_chain_id, &chain_id
-        );
-        previous_chain_id = chain_id.clone();
+//     for layer in image_layers {
+//         // See https://github.com/opencontainers/image-spec/blob/main/config.md#layer-chainid
+//         let chain_id = if previous_chain_id.is_empty() {
+//             layer.diff_id.clone()
+//         } else {
+//             let mut hasher = Sha256::new();
+//             hasher.update(format!("{previous_chain_id} {}", &layer.diff_id));
+//             format!("sha256:{:x}", hasher.finalize())
+//         };
+//         debug!(
+//             "previous_chain_id = {}, chain_id = {}",
+//             &previous_chain_id, &chain_id
+//         );
+//         previous_chain_id = chain_id.clone();
 
-        layer_names.push(name_to_hash(&chain_id));
-        // Remove the verity hash part
-        // layer_hashes.push(layer.verity_hash.to_string());
-        layer_index -= 1;
+//         layer_names.push(name_to_hash(&chain_id));
+//         // Remove the verity hash part
+//         // layer_hashes.push(layer.verity_hash.to_string());
+//         layer_index -= 1;
 
-        new_storages.push(agent::Storage {
-            driver: "blk".to_string(),
-            driver_options: Vec::new(),
-            source: String::new(), // TODO
-            fstype: "tar".to_string(),
-            options: vec![format!("$(hash{layer_index})")],
-            mount_point: format!("$(layer{layer_index})"),
-            fs_group: None,
-        });
-    }
+//         new_storages.push(agent::Storage {
+//             driver: "blk".to_string(),
+//             driver_options: Vec::new(),
+//             source: String::new(), // TODO
+//             fstype: "tar".to_string(),
+//             options: vec![format!("$(hash{layer_index})")],
+//             mount_point: format!("$(layer{layer_index})"),
+//             fs_group: None,
+//         });
+//     }
 
-    new_storages.reverse();
-    for storage in new_storages {
-        storages.push(storage);
-    }
+//     new_storages.reverse();
+//     for storage in new_storages {
+//         storages.push(storage);
+//     }
 
-    layer_names.reverse();
-    // layer_hashes.reverse();
+//     layer_names.reverse();
+//     // layer_hashes.reverse();
 
-    let overlay_storage = agent::Storage {
-        driver: "overlayfs".to_string(),
-        driver_options: Vec::new(),
-        source: String::new(), // TODO
-        fstype: "fuse3.kata-overlay".to_string(),
-        // Remove layer_hashes from options
-        // options: vec![layer_names.join(":"), layer_hashes.join(":")],
-        options: vec![layer_names.join(":")],
-        mount_point: root.Path.clone(),
-        fs_group: None,
-    };
+//     // let overlay_storage = agent::Storage {
+//     //     driver: "overlayfs".to_string(),
+//     //     driver_options: Vec::new(),
+//     //     source: String::new(), // TODO
+//     //     fstype: "fuse3.kata-overlay".to_string(),
+//     //     // Remove layer_hashes from options
+//     //     // options: vec![layer_names.join(":"), layer_hashes.join(":")],
+//     //     options: vec![layer_names.join(":")],
+//     //     mount_point: root.Path.clone(),
+//     //     fs_group: None,
+//     // };
 
-    storages.push(overlay_storage);
-}
+//     // storages.push(overlay_storage);
+// }
 
 async fn parse_config_file(yaml_file: String) -> Result<K8sResourceEnum> {
     let yaml_contents = yaml::get_input_yaml(&Some(yaml_file))?;
@@ -842,11 +857,11 @@ async fn parse_config_file(yaml_file: String) -> Result<K8sResourceEnum> {
 }
 
 /// Converts the given name to a string representation of its sha256 hash.
-fn name_to_hash(name: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(name);
-    format!("{:x}", hasher.finalize())
-}
+// fn name_to_hash(name: &str) -> String {
+//     let mut hasher = Sha256::new();
+//     hasher.update(name);
+//     format!("{:x}", hasher.finalize())
+// }
 
 // fn substitute_env_variables(env: &mut Vec<String>) {
 fn substitute_env_variables(envs: &mut Vec<KeyValueEnvVar>) {
@@ -1043,7 +1058,7 @@ fn get_container_annotations(
         BTreeMap::new()
     };
 
-    c_settings.add_annotations(&mut annotations);
+    c_settings.add_labels(&mut annotations);
 
     if let Some(name) = resource.get_sandbox_name() {
         annotations
@@ -1112,27 +1127,27 @@ fn add_missing_strings(src: &Vec<String>, dest: &mut Vec<String>) {
     debug!("src = {:?}, dest = {:?}", src, dest)
 }
 
-pub fn get_kata_namespaces(
-    // is_pause_container: bool,
-    use_host_network: bool,
-) -> Vec<KataLinuxNamespace> {
-    let mut namespaces: Vec<KataLinuxNamespace> = vec![KataLinuxNamespace {
-        Type: "ipc".to_string(),
-        Path: "".to_string(),
-    }];
+// pub fn get_kata_namespaces(
+//     // is_pause_container: bool,
+//     use_host_network: bool,
+// ) -> Vec<KataLinuxNamespace> {
+//     let mut namespaces: Vec<KataLinuxNamespace> = vec![KataLinuxNamespace {
+//         namespace_type: "ipc".to_string(),
+//         path: "".to_string(),
+//     }];
 
-    // if !is_pause_container || !use_host_network {
-    if !use_host_network {
-        namespaces.push(KataLinuxNamespace {
-            Type: "uts".to_string(),
-            Path: "".to_string(),
-        });
-    }
+//     // if !is_pause_container || !use_host_network {
+//     if !use_host_network {
+//         namespaces.push(KataLinuxNamespace {
+//             namespace_type: "uts".to_string(),
+//             path: "".to_string(),
+//         });
+//     }
 
-    namespaces.push(KataLinuxNamespace {
-        Type: "mount".to_string(),
-        Path: "".to_string(),
-    });
+//     namespaces.push(KataLinuxNamespace {
+//         namespace_type: "mount".to_string(),
+//         path: "".to_string(),
+//     });
 
-    namespaces
-}
+//     namespaces
+// }

@@ -19,8 +19,7 @@
             }
         ],
         "labels": {
-            "io.kubernetes.pod.namespace": "default",
-            "io.kubernetes.pod.uid": "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+            "io.kubernetes.cri.sandbox-namespace": "default"
         }
     },
     "volumes": {
@@ -35,12 +34,12 @@
         "configMap": {
             "hostPath": "$(sfprefix)",
             "containerPath": "^$(cpath)/watchable/$(bundle-id)-[a-z0-9]{16}-",
-            "readOnly": true
+            "readonly": true
         },
         "confidential_configMap": {
             "hostPath": "$(sfprefix)",
             "containerPath": "$(sfprefix)",
-            "readOnly": true
+            "readonly": true
         }
     },
     "mount_destinations": [
@@ -52,6 +51,7 @@
     "common": {
         "sfprefix": "^$(cpath)/$(bundle-id)-[a-z0-9]{16}-",
         "spath": "/run/kata-containers/sandbox/storage",
+        "uid": "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
         "ip_p": "[0-9]{1,5}",
         "ipv4_a": "((25[0-5]|(2[0-4]|1\\d|[1-9]|)\\d)\\.?\\b){4}",
         "svc_name": "[A-Z0-9_\\.\\-]+",

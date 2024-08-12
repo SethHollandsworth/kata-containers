@@ -594,7 +594,7 @@ impl Container {
                     annotations,
                     service_account_name,
                 );
-                
+
                 // let src_string = format!("{}={value}", &env_variable.name);
                 let env_var = KeyValueEnvVar {
                     key: env_variable.name.clone(),
@@ -620,7 +620,7 @@ impl Container {
                 //         dest_env.push(value.clone());
                 //     }
                 // }
-                
+
                 for env_var in env_from_source_values {
                     if !dest_env.iter().any(|e| e.key == env_var.key) {
                         dest_env.push(env_var);
@@ -639,14 +639,14 @@ impl Container {
         false
     }
 
-    pub fn read_only_root_filesystem(&self) -> bool {
-        if let Some(context) = &self.securityContext {
-            if let Some(read_only) = context.readOnlyRootFilesystem {
-                return read_only;
-            }
-        }
-        false
-    }
+    // pub fn read_only_root_filesystem(&self) -> bool {
+    //     if let Some(context) = &self.securityContext {
+    //         if let Some(read_only) = context.readOnlyRootFilesystem {
+    //             return read_only;
+    //         }
+    //     }
+    //     false
+    // }
 
     pub fn get_process_args(&self, policy_args: &mut Vec<String>) -> (bool, bool) {
         let mut yaml_has_command = true;
@@ -898,99 +898,100 @@ impl yaml::K8sResource for Pod {
         false
     }
 
-    fn get_process_fields(&self, process: &mut policy::KataProcess) {
-        if let Some(context) = &self.spec.securityContext {
-            if let Some(uid) = context.runAsUser {
-                process.User.UID = uid.try_into().unwrap();
-            }
-        }
-    }
+    // TODO SETH: see if we should put the user ID in the sandbox info
+    // fn get_process_fields(&self, process: &mut policy::KataProcess) {
+    //     if let Some(context) = &self.spec.securityContext {
+    //         if let Some(uid) = context.runAsUser {
+    //             process.user.UID = uid.try_into().unwrap();
+    //         }
+    //     }
+    // }
 }
 
 impl Container {
-    pub fn apply_capabilities(
-        &self,
-        capabilities: &mut policy::KataLinuxCapabilities,
-        defaults: &policy::CommonData,
-    ) {
-        assert!(capabilities.Ambient.is_empty());
-        assert!(capabilities.Inheritable.is_empty());
+    // pub fn apply_capabilities(
+    //     &self,
+    //     capabilities: &mut policy::KataLinuxCapabilities,
+    //     defaults: &policy::CommonData,
+    // ) {
+    //     assert!(capabilities.ambient.is_empty());
+    //     assert!(capabilities.inheritable.is_empty());
 
-        if let Some(securityContext) = &self.securityContext {
-            if let Some(yaml_capabilities) = &securityContext.capabilities {
-                if let Some(drop) = &yaml_capabilities.drop {
-                    for c in drop {
-                        if c == "ALL" {
-                            capabilities.Bounding.clear();
-                            capabilities.Permitted.clear();
-                            capabilities.Effective.clear();
-                        } else {
-                            let cap = "CAP_".to_string() + c;
+    //     if let Some(securityContext) = &self.securityContext {
+    //         if let Some(yaml_capabilities) = &securityContext.capabilities {
+    //             if let Some(drop) = &yaml_capabilities.drop {
+    //                 for c in drop {
+    //                     if c == "ALL" {
+    //                         capabilities.bounding.clear();
+    //                         capabilities.permitted.clear();
+    //                         capabilities.effective.clear();
+    //                     } else {
+    //                         let cap = "CAP_".to_string() + c;
 
-                            capabilities.Bounding.retain(|x| !x.eq(&cap));
-                            capabilities.Permitted.retain(|x| !x.eq(&cap));
-                            capabilities.Effective.retain(|x| !x.eq(&cap));
-                        }
-                    }
-                }
-                if let Some(add) = &yaml_capabilities.add {
-                    for c in add {
-                        let cap = "CAP_".to_string() + c;
+    //                         capabilities.bounding.retain(|x| !x.eq(&cap));
+    //                         capabilities.permitted.retain(|x| !x.eq(&cap));
+    //                         capabilities.effective.retain(|x| !x.eq(&cap));
+    //                     }
+    //                 }
+    //             }
+    //             if let Some(add) = &yaml_capabilities.add {
+    //                 for c in add {
+    //                     let cap = "CAP_".to_string() + c;
 
-                        if !capabilities.Bounding.contains(&cap) {
-                            capabilities.Bounding.push(cap.clone());
-                        }
-                        if !capabilities.Permitted.contains(&cap) {
-                            capabilities.Permitted.push(cap.clone());
-                        }
-                        if !capabilities.Effective.contains(&cap) {
-                            capabilities.Effective.push(cap.clone());
-                        }
-                    }
-                }
-            }
-        }
-        compress_default_capabilities(capabilities, defaults);
-    }
+    //                     if !capabilities.bounding.contains(&cap) {
+    //                         capabilities.bounding.push(cap.clone());
+    //                     }
+    //                     if !capabilities.permitted.contains(&cap) {
+    //                         capabilities.permitted.push(cap.clone());
+    //                     }
+    //                     if !capabilities.effective.contains(&cap) {
+    //                         capabilities.effective.push(cap.clone());
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     compress_default_capabilities(capabilities, defaults);
+    // }
 
-    pub fn get_process_fields(&self, process: &mut policy::KataProcess) {
-        if let Some(context) = &self.securityContext {
-            if let Some(uid) = context.runAsUser {
-                process.User.UID = uid.try_into().unwrap();
-            }
-            if let Some(allow) = context.allowPrivilegeEscalation {
-                process.NoNewPrivileges = !allow
-            }
-        }
-    }
+    // pub fn get_process_fields(&self, process: &mut policy::KataProcess) {
+    //     if let Some(context) = &self.securityContext {
+    //         // if let Some(uid) = context.runAsUser {
+    //         //     process.user.UID = uid.try_into().unwrap();
+    //         // }
+    //         if let Some(allow) = context.allowPrivilegeEscalation {
+    //             process.no_new_privileges = !allow
+    //         }
+    //     }
+    // }
 }
 
-fn compress_default_capabilities(
-    capabilities: &mut policy::KataLinuxCapabilities,
-    defaults: &policy::CommonData,
-) {
-    assert!(capabilities.Ambient.is_empty());
-    assert!(capabilities.Inheritable.is_empty());
+// fn compress_default_capabilities(
+//     capabilities: &mut policy::KataLinuxCapabilities,
+//     defaults: &policy::CommonData,
+// ) {
+//     assert!(capabilities.ambient.is_empty());
+//     assert!(capabilities.inheritable.is_empty());
 
-    compress_capabilities(&mut capabilities.Bounding, defaults);
-    compress_capabilities(&mut capabilities.Permitted, defaults);
-    compress_capabilities(&mut capabilities.Effective, defaults);
-}
+//     compress_capabilities(&mut capabilities.bounding, defaults);
+//     compress_capabilities(&mut capabilities.permitted, defaults);
+//     compress_capabilities(&mut capabilities.effective, defaults);
+// }
 
-fn compress_capabilities(capabilities: &mut Vec<String>, defaults: &policy::CommonData) {
-    let default_caps = if capabilities == &defaults.default_caps {
-        "$(default_caps)"
-    } else if capabilities == &defaults.privileged_caps {
-        "$(privileged_caps)"
-    } else {
-        ""
-    };
+// fn compress_capabilities(capabilities: &mut Vec<String>, defaults: &policy::CommonData) {
+//     let default_caps = if capabilities == &defaults.default_caps {
+//         "$(default_caps)"
+//     } else if capabilities == &defaults.privileged_caps {
+//         "$(privileged_caps)"
+//     } else {
+//         ""
+//     };
 
-    if !default_caps.is_empty() {
-        capabilities.clear();
-        capabilities.push(default_caps.to_string());
-    }
-}
+//     if !default_caps.is_empty() {
+//         capabilities.clear();
+//         capabilities.push(default_caps.to_string());
+//     }
+// }
 
 // pub async fn add_pause_container(containers: &mut Vec<Container>, config: &Config) {
 //     debug!("Adding pause container...");
